@@ -16,8 +16,8 @@ package {
 			warn();
 		}
 
-		public function check():Boolean {
-			return (getTimer() - startTime) > 10000;
+		public function timeLeft():Number {
+			return 10000 - (getTimer() - startTime);
 		}
 
 		public function warn():void {
