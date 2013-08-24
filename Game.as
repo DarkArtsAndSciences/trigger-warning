@@ -32,6 +32,11 @@ package {
 
 			var t1 = new Trigger(startTime + 1000, crashWarning, failEffect);
 			var t2 = new Trigger(startTime + 7000, crashWarning, failEffect);
+
+			for (var i = 0; i < 25; i++) {
+				var b = new Boid();
+				addChild(b);
+			}
 		}
 
 		function onEnterFrame(e:Event):void {

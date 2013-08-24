@@ -5,3 +5,4 @@ Ludum Dare 27 - 10 Seconds
 Rules:
 	All triggers fire after exactly ten seconds.
 	The clock is editable.
+	Boids target the mouse.
