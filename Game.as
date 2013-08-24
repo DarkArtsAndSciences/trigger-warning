@@ -1,13 +1,20 @@
-import Trigger;
+package {
+	import flash.display.MovieClip;
+	import flash.text.TextField;
 
-var w = new Warning(warning, new CrashSound(), "crash");
-function warning() {
-	trace("warning function");
+	public class Game extends MovieClip {
+		public function Game() {
+			var crashWarning = new Warning(crashWarningFunction, new CrashSound(), "crash", warningText);
+			function crashWarningFunction() {
+				trace("crash warning");
+			}
+
+			var failEffect = new Effect(action, new FailSound());
+			function action() {
+				trace("failure");
+			}
+
+			var t = new Trigger(crashWarning, failEffect);
+		}
+	}
 }
-
-var e = new Effect(action, new FailSound());
-function action() {
-	trace("action");
-}
-
-var t = new Trigger(w, e);

@@ -3,10 +3,10 @@ package {
 	import Warning;
 
 	public class Trigger {
-		var startTime;
-		var interval;
-		var warning;
-		var effect;
+		var startTime:Number;
+		var interval:Number;
+		var warning:Warning;
+		var effect:Effect;
 
 		public function Trigger(warning:Warning, effect:Effect) {
 			startTime = getTimer();
