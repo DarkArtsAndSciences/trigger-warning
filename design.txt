@@ -11,6 +11,7 @@ Rules:
 
 	Time itself [long pause] can [short pause] be changed.
 	[edit the clock along with the pauses]
+	[optional: write can NOT, then rewind and replay without it]
 
 	***
 
