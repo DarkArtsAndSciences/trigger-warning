@@ -27,9 +27,6 @@ Rules:
 	[when a Boid hits a wall, trigger a warning (game start in 10s)]
 
 Next:
-	Clean up trigger creation in game init, add all sounds and some simple effects.
-
-Then:
 	Make boids interact with triggers.
 	Should a trigger have a location that boids can flock to or away from?
 
@@ -82,6 +79,7 @@ Then:
 
 		startle turns all boids, then sets their mood to normal, angry (if they've been startled too often recently), fear (sound location), or panic (general)
 
+Then:
 	Positional sound, assuming it's easy.
 
 	Trigger waves.

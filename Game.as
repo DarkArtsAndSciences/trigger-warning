@@ -1,7 +1,6 @@
 package {
 	import flash.display.MovieClip;
 	import flash.text.TextField;
-	import flash.display.BlendMode;
 	import flash.events.*;
 	import flash.utils.*;
 
@@ -10,29 +9,22 @@ package {
 		var elapsedTime:Number;
 
 		public function Game() {
+			// main game loop
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 
+			// clock
 			startTime = getTimer();
 			var clockUpdateTimer = new Timer(1000);
 			clockUpdateTimer.addEventListener(TimerEvent.TIMER, updateClock);
 			clockUpdateTimer.start();
 
-			// More blend modes here: http://hyperspatial.com/2009/08/how-to-set-textfield-alpha/
-			warningText.blendMode = BlendMode.LAYER;
+			// triggers
+			var gameOverWarning = new Warning(new CrashSound(), "game over in 10s", null)
+			var gameOverEffect = new Effect(0, new FailSound(), function(){gameOver();});
+			var gameOverTrigger = new Trigger(startTime + 5000, gameOverWarning, gameOverEffect);
+			addChild(gameOverTrigger);
 
-			var crashWarning = new Warning(crashWarningFunction, new CrashSound(), "crash", warningText);
-			function crashWarningFunction() {
-				trace("crash warning");
-			}
-
-			var failEffect = new Effect(action, new FailSound(), 0);
-			function action() {
-				trace("failure");
-			}
-
-			var t1 = new Trigger(startTime + 1000, crashWarning, failEffect);
-			var t2 = new Trigger(startTime + 7000, crashWarning, failEffect);
-
+			// boids
 			for (var i = 0; i < 25; i++) {
 				var b = new Boid();
 				addChild(b);
@@ -56,6 +48,10 @@ package {
 			var seconds = Math.abs(Math.floor(elapsedTime / 1000) % 60);
 			var zero = seconds < 10 ? "0" : "";
 			clockText.text = sign + minutes + ":" + zero + seconds;
+		}
+
+		function gameOver():void {
+			trace("game over");
 		}
 	}
 }
