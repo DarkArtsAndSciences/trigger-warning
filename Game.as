@@ -2,22 +2,18 @@ package {
 	import flash.display.MovieClip;
 	import flash.text.TextField;
 	import flash.display.BlendMode;
-	import flash.events.TimerEvent;
+	import flash.events.*;
 	import flash.utils.*;
 
 	public class Game extends MovieClip {
 		var startTime:Number;
+		var elapsedTime:Number;
 
 		public function Game() {
+			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+
 			startTime = getTimer();
 			var clockUpdateTimer = new Timer(1000);
-			function updateClock(e:TimerEvent):void {
-				var elapsedTime = getTimer() - startTime;
-				var seconds = Math.floor(elapsedTime / 1000) % 60;
-				var minutes = Math.floor(elapsedTime / 1000 / 60);
-				var zero = seconds < 10 ? "0" : "";
-				clockText.text = minutes + ":" + zero + seconds;
-			}
 			clockUpdateTimer.addEventListener(TimerEvent.TIMER, updateClock);
 			clockUpdateTimer.start();
 
@@ -29,12 +25,32 @@ package {
 				trace("crash warning");
 			}
 
-			var failEffect = new Effect(action, new FailSound());
+			var failEffect = new Effect(action, new FailSound(), 0);
 			function action() {
 				trace("failure");
 			}
 
-			var t = new Trigger(crashWarning, failEffect);
+			var t1 = new Trigger(startTime + 1000, crashWarning, failEffect);
+			var t2 = new Trigger(startTime + 7000, crashWarning, failEffect);
+		}
+
+		function onEnterFrame(e:Event):void {
+			Trigger.fire(elapsedTime);
+		}
+
+		function updateClock(e:TimerEvent):void {
+			var timeOffset = Trigger.timeOffset();
+			var flooredOffset = Math.floor(timeOffset/1000);
+			var sign = flooredOffset > 0 ? "+" : "";
+			offsetText.text = flooredOffset != 0 ? sign + flooredOffset : "";
+
+			elapsedTime = getTimer() + timeOffset - startTime;
+			var minutes = Math.floor(elapsedTime / 1000 / 60);
+			sign = minutes < 0 ? "-" : "";
+			if (minutes < 0) minutes++;
+			var seconds = Math.abs(Math.floor(elapsedTime / 1000) % 60);
+			var zero = seconds < 10 ? "0" : "";
+			clockText.text = sign + minutes + ":" + zero + seconds;
 		}
 	}
 }
