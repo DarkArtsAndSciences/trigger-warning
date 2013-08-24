@@ -3,6 +3,7 @@ package {
 	import flash.events.*;
 	import flash.geom.Point;
 
+	// http://www.kfish.org/boids/pseudocode.html
 	public class Boid extends MovieClip {
 		static var boids = [];
 		var velocity:Point;
