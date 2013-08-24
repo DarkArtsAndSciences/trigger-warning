@@ -1,20 +1,18 @@
 package {
+	import flash.media.Sound;
 
 	public class Effect {
-		var warnFunction:Function;
-		var effectFunction:Function;
+		var action:Function;
+		var sound:Sound;
 
-		public function Effect(warnFunction:Function, effectFunction:Function) {
-			this.warnFunction = warnFunction;
-			this.effectFunction = effectFunction;
-		}
-
-		public function warn():void {
-			warnFunction();
+		public function Effect(action:Function, sound:Sound) {
+			this.action = action;
+			this.sound = sound;
 		}
 
 		public function affect():void {
-			effectFunction();
+			sound.play();
+			action();
 		}
 	}
 }

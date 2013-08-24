@@ -13,6 +13,7 @@ package {
 			interval = setInterval(fire, 10000);
 			this.warning = warning;
 			this.effect = effect;
+			warn();
 		}
 
 		public function check():Boolean {
@@ -21,7 +22,6 @@ package {
 
 		public function warn():void {
 			warning.warn();
-			effect.warn();
 		}
 
 		public function fire():void {

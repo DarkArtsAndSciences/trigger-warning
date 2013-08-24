@@ -1,17 +1,21 @@
 package {
+	import flash.media.Sound;
 
 	public class Warning {
-		var warningText:String;
-		var warningFunction:Function;
+		var action:Function;
+		var text:String;
+		var sound:Sound;
 
-		public function Warning(warningText:String, warningFunction:Function) {
-			this.warningText = warningText;
-			this.warningFunction = warningFunction;
+		public function Warning(action:Function, sound:Sound, text:String) {
+			this.action = action;
+			this.sound = sound;
+			this.text = text;
 		}
 
 		public function warn() {
-			trace(warningText);
-			warningFunction();
+			trace(text);
+			sound.play();
+			action();
 		}
 	}
 }
