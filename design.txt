@@ -3,6 +3,89 @@ Ludum Dare 27 - 10 Seconds
 10 Second Trigger Warning
 
 Rules:
-	All triggers fire after exactly ten seconds.
-	The clock is editable.
-	Boids target the mouse.
+	A Trigger has a Warning and an Effect.
+
+	The Effect occurs ten seconds after the Warning.
+
+	Triggers can not be changed.
+
+	Time itself [long pause] can [short pause] be changed.
+	[edit the clock along with the pauses]
+
+	***
+
+	These [fade in boids] are your Boids.
+
+	Boids react to your actions.
+	[pause until the mouse moves (hint after 10s), then turn on follow mouse rule]
+
+	Boids react to Triggers.
+	[remove follow mouse rule, add startle effect at mouse location]
+
+	Triggers react to Boids.
+	[fade in trigger labels on walls]
+	[when a Boid hits a wall, trigger a warning (game start in 10s)]
+
+Next:
+	Clean up boid rule handling, combine loops, make adding new rules easier.
+	Clean up trigger creation in game init, add all sounds and some simple effects.
+
+Then:
+	Make boids interact with triggers.
+	Should a trigger have a location that boids can flock to or away from?
+
+	Boids have moods that affect their behavior.
+		Normal: basic flocking behavior, rules 1-3 (not 4)
+		Target: fly toward a point (warning, event, boid, obstacle, environment, or mouse) (rule4)
+		Startle: pick direction at random, then fly at full speed but avoid obstacles (add direction angle to Boid)
+		Perch: don't move unless another boid is too close, then move sideways (double distance like rule 2), then fly away if it's now off the object it was perched on
+		Angry: attack another boid
+			triggered when rule 2 fails and two boids actually collide
+			use Target to follow another boid, Angry to attack it
+			attack the actual cause, or just attack nearby boids at random?
+			can boids die? is that good or bad? maybe it depends on the level...
+		Berserk: attack anything and everything
+			triggered by high levels of anger
+			if there are other boids nearby, pick one and attack it
+
+		Fear: fly away from a specific thing (mouse, location, moving object)
+		Panic: fly away from other boids (and into walls if their speed is too high)
+		Infect: adds the Infected mood to every boid it gets close to
+			This needs a different variable, or they all need to be additive (targetting the mouse, but angry at boids 2 and 4, and infected with three diseases)
+			Infections have BoidEffects which can set targets, set moods, and otherwise change behaviors. Maybe I need a single target, a single mood, and a set of InfectEffects (which will go nicely with effect.affect())
+
+		Boids have personalities that affect how their moods change.
+			When attacked, a boid may be angry at the attacker, angry in general, afraid of the attacker, or afraid in general.
+			When startled, a boid may be fearful or angry in general, it may become fearful or angry of the source, or it may blame a nearby boid or environment object and become fearful or angry of it.
+			When infected, a boid will not react until it notices the infection (depends on the infection settings, but probably a ten second timer, that gives the infector enough time to finish their timer and fly away before getting blamed). When it notices the infection, it will choose something nearby to blame (either the location itself (average of last ten seconds?), or a moving object within range). As above, reactions can be angry or fearful, and a boid can also become more angry or panicked in general. Individual boids vary in their "blame distance".
+			Boids may have different reactions depending on their current mood. An angry bird may be more likely to blame the nearest other boid when something goes wrong, while a fearful bird may blame the location
+			Is there anything general besides location I can blame? Lighting/color in the area? This plus user paint could have some interesting emergent behavior. You could train boids to be afraid of a certain color, or angry when they see it. Should I add "happy" and/or "food" effects so that you can *attract* boids to a certain area? Do boids need needs (food, social, privacy, rest, calm/angry, brave/panic, happy/sad)?
+
+			bp = new BoidPersonality();
+			bp.react("attacked", "anger", "attacker", 1.0); // standard anger at attacker
+			bp.react("attacked", "panic", 0.25); // and a little general panic
+			bp.react("attacking", "anger", "victim", 0.34); // three strikes and I'll forgive you
+			bp.react("infected", "fear", "nearest environment", 0.5); // I bet that dirty perch got me sick. If it happens again, I'm not going back.
+			bp.react("infected", "angry", "nearest boid", 0.25); // Or maybe it was that dirty pigeon that was perched next to me when I started sneezing.
+			bp.react("startle", 60db, "fear", "nearest environment", 1.0); // That perch made a loud noise!
+			bp.react("startle", 20db, "fear", "environment lighting", 0.1); // There are scary whispers at night.
+			I need more parameters, probably trigger (name and threshold/context), emotion (name and effect), emotion target, callback function?
+
+		target moving object -> follow
+		target moving object while angry -> follow until close, lunge attack * times, then reconsider mood and choose from: fly a short distance away, then attack again; choose a new target; stop/reduce anger, choose a new mood
+		target infectable while infected -> follow until close, stay nearby for ten seconds, then choose a new target (or a random direction if no other infectables are nearby); also follow any special infection rules
+		target object while fearful -> fly away from that object; with higher levels of fear, increase effect of this rule relative to the others
+		target object while panicked -> fly away from that object, period. ignore other rules, but randomize the angle a little
+		target stationary object -> perch
+			rest for ten seconds
+			if completed without being disturbed, may heal negative moods
+			is it possible to perch on the mouse if it isn't moving? might be a good easter egg, if I can make it happen only occasionally
+
+		startle turns all boids, then sets their mood to normal, angry (if they've been startled too often recently), fear (sound location), or panic (general)
+
+	Positional sound, assuming it's easy.
+
+	Trigger waves.
+	Play/pause/win/fail handling.
+
+	If the physical point of the game is to control the boids and avoid unwanted collisions, Easy/Medium/Hard modes may be as simple as increasing the number of boids.
