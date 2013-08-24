@@ -1,25 +1,32 @@
 package {
 	import flash.utils.*;
+	import Warning;
 
 	public class Trigger {
 		var startTime;
 		var interval;
-		var effect;  // function to be called on fire
+		var warning;
+		var effect;
 
-		public function Trigger(effectFunction:Function) {
+		public function Trigger(warning:Warning, effect:Effect) {
 			startTime = getTimer();
 			interval = setInterval(fire, 10000);
-			effect = effectFunction;
+			this.warning = warning;
+			this.effect = effect;
 		}
 
 		public function check():Boolean {
 			return (getTimer() - startTime) > 10000;
 		}
 
-		function fire():void {
-			//trace("trigger fired");
+		public function warn():void {
+			warning.warn();
+			effect.warn();
+		}
+
+		public function fire():void {
+			effect.affect();
 			clearInterval(interval);
-			effect()
 		}
 	}
 }
