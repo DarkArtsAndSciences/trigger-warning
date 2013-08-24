@@ -27,7 +27,6 @@ Rules:
 	[when a Boid hits a wall, trigger a warning (game start in 10s)]
 
 Next:
-	Clean up boid rule handling, combine loops, make adding new rules easier.
 	Clean up trigger creation in game init, add all sounds and some simple effects.
 
 Then:
