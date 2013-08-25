@@ -141,8 +141,12 @@ package {
 
 				// avoid collisions with nearby boids
 				if (distance < width*3) {
-					avoidCollision = avoidCollision.add(location.subtract(boids[i].location));
-					setAnger(anger + frameIncrement);
+					if (anger <= boids[i].anger) {
+						avoidCollision = avoidCollision.add(location.subtract(boids[i].location));
+						setAnger(anger + frameIncrement*10);
+					} else {
+						boids[i].setFear(boids[i].fear + frameIncrement*10);
+					}
 				}
 			}
 
