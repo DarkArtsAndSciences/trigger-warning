@@ -12,9 +12,9 @@ package {
 			this.time = time;
 		}
 
-		public function affect():void {
+		public function affect(location):void {
 			sound.play();
-			action();
+			action(location);
 		}
 	}
 }

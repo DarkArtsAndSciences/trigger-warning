@@ -8,6 +8,8 @@ package {
 		var startTime:Number;
 		var elapsedTime:Number;
 
+		var gameOverTrigger:Trigger;
+
 		public function Game() {
 			// main game loop
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
@@ -19,13 +21,14 @@ package {
 			clockUpdateTimer.start();
 
 			// triggers
-			var gameOverWarning = new Warning(new CrashSound(), "game over in 10s", null)
-			var gameOverEffect = new Effect(0, new FailSound(), function(){gameOver();});
-			var gameOverTrigger = new Trigger(startTime + 5000, gameOverWarning, gameOverEffect);
+			var gameOverWarning = new Warning(new CrashSound(), "game over in 10s", function(location){Boid.startle(location, 120);});
+			var gameOverEffect = new Effect(0, new FailSound(), function(location){gameOver(location);});
+			gameOverTrigger = new Trigger(startTime + 2000, gameOverWarning, gameOverEffect);
+			gameOverTrigger.locationType = "mouse";
 			addChild(gameOverTrigger);
 
 			// boids
-			for (var i = 0; i < 25; i++) {
+			for (var i = 0; i < 50; i++) {
 				var b = new Boid();
 				addChild(b);
 			}
@@ -50,8 +53,8 @@ package {
 			clockText.text = sign + minutes + ":" + zero + seconds;
 		}
 
-		function gameOver():void {
-			trace("game over");
+		function gameOver(location):void {
+			trace("game over at " + location);
 		}
 	}
 }

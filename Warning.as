@@ -12,10 +12,10 @@ package {
 			this.text = text;
 		}
 
-		public function warn() {
+		public function warn(location) {
 			//trace(text);
 			if (sound) sound.play();
-			if (action != null) action();
+			if (action != null) action(location);
 		}
 
 	}
