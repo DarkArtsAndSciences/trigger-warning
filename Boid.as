@@ -69,14 +69,15 @@ package {
 			return new Point((mouseX+400-x)*scale, (mouseY+300-y)*scale);
 		}
 
-		static function startle(location:Point, range:Number):void {
-			trace("startle at " + location);
+		static function startle(location:Point, range:Number, amount:Number):void {
+			//trace("startle at " + location);
 			for (var i in boids) {
 				var distance = Point.distance(location, boids[i].location);
 				if (distance < range) {
+					// startle this boid
 					boids[i].startled = true;
 
-					// tint startled boids red
+					// red tint
 					var tint = boids[i].transform.colorTransform;
 					tint.color = 0xFF0000;
 					boids[i].transform.colorTransform = tint;
@@ -84,9 +85,7 @@ package {
 					// fly away from the location
 					var offset = location.subtract(boids[i].location);
 					var angle = Math.atan2(offset.x, offset.y);
-					var distance2 = range-distance;
-					var strength = distance2/range;
-					var speed = (range-distance)*(range-distance)/range;
+					var speed = Math.pow(range-distance,1.5)/range * amount;
 					var offset2 = new Point(0 - Math.sin(angle) * speed,
 											0 - Math.cos(angle) * speed);
 					boids[i].startleOffset = offset2;

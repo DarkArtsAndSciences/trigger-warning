@@ -2,6 +2,7 @@ package {
 	import flash.display.MovieClip;
 	import flash.text.TextField;
 	import flash.events.*;
+	import flash.geom.Point;
 	import flash.utils.*;
 
 	public class Game extends MovieClip {
@@ -14,6 +15,9 @@ package {
 			// main game loop
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 
+			// controls
+			stage.addEventListener(MouseEvent.CLICK, onMouseClick);
+
 			// clock
 			startTime = getTimer();
 			var clockUpdateTimer = new Timer(1000);
@@ -21,7 +25,7 @@ package {
 			clockUpdateTimer.start();
 
 			// triggers
-			var gameOverWarning = new Warning(new CrashSound(), "game over in 10s", function(location){Boid.startle(location, 120);});
+			var gameOverWarning = new Warning(new SadSound(), "game over in 10s", null);
 			var gameOverEffect = new Effect(0, new FailSound(), function(location){gameOver(location);});
 			gameOverTrigger = new Trigger(startTime + 2000, gameOverWarning, gameOverEffect);
 			gameOverTrigger.locationType = "mouse";
@@ -36,6 +40,12 @@ package {
 
 		function onEnterFrame(e:Event):void {
 			Trigger.fire(elapsedTime);
+		}
+
+		function onMouseClick(e:MouseEvent):void {
+			var sound = new CrashSound();
+			sound.play();
+			Boid.startle(new Point(e.localX, e.localY), 150, 3);
 		}
 
 		function updateClock(e:TimerEvent):void {
@@ -55,6 +65,7 @@ package {
 
 		function gameOver(location):void {
 			trace("game over at " + location);
+			Boid.startle(location, 200, 10);
 		}
 	}
 }
