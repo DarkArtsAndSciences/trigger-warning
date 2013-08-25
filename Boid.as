@@ -38,24 +38,38 @@ package {
 		}
 
 		function onEnterFrame(e:Event):void {
-			// location
+			// calculate new velocity
 			velocity = velocity.add(rules());
-			var speed = Point.distance(velocity, new Point);
-			var maxSpeed = 10;  // pixels per frame?
-			if (speed > maxSpeed) {
-				velocity = new Point(velocity.x/speed, velocity.y/speed);
-				velocity.normalize(maxSpeed);
-				fatigue += 1/100;
+
+			// tired birds have a lower max speed
+			var speed = Point.distance(velocity, new Point());
+			var maxSpeed = 20*(1-fatigue);  // pixels per frame?
+			if (speed > maxSpeed) {  // flying too fast
+				// slow down
+				velocity.x /= speed;
+				velocity.y /= speed;
+				velocity.normalize((speed+maxSpeed)/2);
+
+				// increase fatigue
+				fatigue += 1/300;
+				if (fatigue > 1) fatigue = 1;
 			}
+
+			// tired birds drift down
+			velocity.y += Math.abs(velocity.y) * fatigue / 2;
+
+			// set velocity, location, and rotation
 			setVelocity(velocity.x, velocity.y);
 
-			// color
+			// set color based on mood
 			var tint = transform.colorTransform;
 			tint.redOffset   = 255*anger;
 			tint.greenOffset = 255*infection;
 			tint.blueOffset  = 255*fear;
 			transform.colorTransform = tint;
-			alpha = 1.0 - fatigue;
+
+			// tired birds fade out
+			alpha = 1-fatigue;
 		}
 
 		// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
@@ -77,7 +91,7 @@ package {
 			rule3 = new Point((rule3.x/n - velocity.x)/8,
 							  (rule3.y/n - velocity.y)/8);
 
-			return rule1.add(rule2).add(rule3).add(rule4(0.005));
+			return rule1.add(rule2).add(rule3).add(rule4(0.01));
 		}
 
 		// Boids try to fly towards the mouse.
