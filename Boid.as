@@ -2,6 +2,7 @@ package {
 	import flash.display.MovieClip;
 	import flash.events.*;
 	import flash.geom.Point;
+	import flash.utils.*;
 
 	public class Boid extends MovieClip {
 		static var boids = [];
@@ -11,10 +12,15 @@ package {
 		// moods
 		var startled = false;
 		var startleOffset:Point;
+		var isPerching = false;
+		var perchEndTime = 0;
 		var anger = 0.0;		// red
 		var fear = 0.0;			// blue
 		var fatigue = 0.0;		// alpha
 		var infection = 0.0;	// green
+
+		// If you increment once per frame by this number, it takes 10 seconds to go from 0.0 to 1.0.
+		static var frameIncrement = 1/300;  // 1/framerate * 1/10
 
 		public function Boid() {
 			boids.push(this);
@@ -38,32 +44,6 @@ package {
 		}
 
 		function onEnterFrame(e:Event):void {
-			// calculate new velocity
-			velocity = velocity.add(rules());
-
-			// tired birds have a lower max speed
-			var speed = Point.distance(velocity, new Point());
-			var maxSpeed = 10*(1-fatigue);  // pixels per frame?
-			if (speed > maxSpeed) {  // flying too fast
-				// slow down
-				velocity.x /= speed;
-				velocity.y /= speed;
-				velocity.normalize((speed+maxSpeed)/2);
-
-				// increase fatigue
-				fatigue += 1/300;
-				if (fatigue > 1) fatigue = 1;
-			} else if (speed < maxSpeed/2) {
-				// flying slowly, decrease fatigue
-				fatigue -= 1/300;
-			}
-
-			// tired birds drift down
-			velocity.y += Math.abs(velocity.y) * fatigue / 2;
-
-			// set velocity, location, and rotation
-			setVelocity(velocity.x, velocity.y);
-
 			// set color based on mood
 			var tint = transform.colorTransform;
 			tint.redOffset   = 255*anger;
@@ -73,6 +53,58 @@ package {
 
 			// tired birds fade out
 			alpha = 1-fatigue;
+
+			// perching
+			var groundLevel = stage.height - 10;
+			if (y > groundLevel) {
+				// start perching
+				if (!isPerching) {
+					isPerching = true;
+					perchEndTime = getTimer()+10000;
+				}
+				y = groundLevel;
+				rotation = 90;
+			}
+			if (isPerching) {
+				if (perchEndTime > getTimer()) {
+					// still perching
+					fatigue = Math.max(fatigue - frameIncrement, 0);
+					anger = Math.max(anger - frameIncrement, 0);
+					fear = Math.max(fear - frameIncrement, 0);
+					return;  // don't move
+				} else {
+					// done perching
+					isPerching = false;
+					velocity.y -= 20;
+				}
+			}
+
+			// calculate new velocity
+			velocity = velocity.add(rules());
+
+			// tired birds have a lower max speed
+			var speed = Point.distance(velocity, new Point());
+			var maxSpeed = 10*(1-fatigue);  // pixels per frame?
+
+			if (speed > maxSpeed) {  // flying too fast
+				// slow down
+				velocity.x /= speed;
+				velocity.y /= speed;
+				velocity.normalize((speed+maxSpeed)/2);
+
+				// increase fatigue
+				fatigue = Math.max(fatigue + frameIncrement, 0);
+
+			} else if (speed < maxSpeed/3) { // flying very slow
+				// decrease fatigue
+				fatigue = Math.max(fatigue - frameIncrement, 0);
+			}
+
+			// tired birds drift down
+			velocity.y += Math.abs(velocity.y) * fatigue / 2;
+
+			// set velocity, location, and rotation
+			setVelocity(velocity.x, velocity.y);
 		}
 
 		// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
@@ -80,6 +112,7 @@ package {
 			var towardsFlock = new Point();
 			var avoidCollision = new Point();
 			var matchVelocity = new Point();
+
 			for (var i in boids) {
 				if (this == boids[i]) continue;
 				towardsFlock.offset(boids[i].x, boids[i].y);
@@ -89,11 +122,11 @@ package {
 				if (distance < stage.height/2)
 					matchVelocity = matchVelocity.add(boids[i].velocity);
 			}
+
 			var n = boids.length - 1;
 			towardsFlock = startled ? startleOffset : new Point((towardsFlock.x/n - x)/200, (towardsFlock.y/n - y)/200);
 			matchVelocity = new Point((matchVelocity.x/n - velocity.x)/8,
 							  (matchVelocity.y/n - velocity.y)/8);
-
 
 			var point = new Point();
 			point = towardsFlock.add(avoidCollision).add(matchVelocity);
@@ -102,7 +135,6 @@ package {
 			return point;
 		}
 
-		// Boids try to fly towards the mouse.
 		function towardsMouse(scale:Number):Point {
 			if (Game(parent).isMouseDown) {
 				var px = stage.mouseX - x;
@@ -112,7 +144,6 @@ package {
 			return new Point();
 		}
 
-		// Boids try to stay on screen.
 		function stayOnScreen(amount:Number):Point {
 			var point = new Point();
 			var border = 10;
@@ -128,7 +159,6 @@ package {
 		}
 
 		static function startle(location:Point, range:Number, amount:Number):void {
-			//trace("startle at " + location);
 			for (var i in boids) {
 				var distance = Point.distance(location, boids[i].location);
 				if (distance < range) {

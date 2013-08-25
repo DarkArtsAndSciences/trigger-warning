@@ -34,7 +34,7 @@ package {
 			addChild(gameOverTrigger);
 
 			// boids
-			for (var i = 0; i < 50; i++) {
+			for (var i = 0; i < 20; i++) {
 				var b = new Boid();
 				addChild(b);
 			}
