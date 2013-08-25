@@ -1,5 +1,5 @@
 package {
-	import flash.display.MovieClip;
+	import flash.display.*;
 	import flash.events.*;
 	import flash.geom.Point;
 	import flash.utils.*;
@@ -7,12 +7,17 @@ package {
 	// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
 
 	public class Boid extends MovieClip {
+		private static var game:Game;
+
 		static var boids = [];
 		var location:Point;  // convenience for x,y
 		var velocity:Point;
 
+		var follow:Point;
+		var avoid:Point;
+
 		var isStartled = false;
-		var startleOffset:Point;
+		//var startleOffset:Point;
 		var startleEndTime = 0;
 
 		var isPerching = false;
@@ -23,8 +28,6 @@ package {
 		var fatigue = 0.0;		// alpha
 		var infection = 0.0;	// green
 
-		// If you increment once per frame by this number, it takes 10 seconds to go from 0.0 to 1.0.
-		static var frameIncrement = 1/300;  // 1/framerate * 1/10
 
 		public function Boid() {
 			boids.push(this);
@@ -33,9 +36,13 @@ package {
 			y = Math.random() * 600;
 			location = new Point(x,y);
 			velocity = new Point(0,0);
-			startleOffset = new Point(0,0);
+			//startleOffset = new Point(0,0);
 
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+		}
+
+		public static function registerGame(g:Game) {
+			game = g;
 		}
 
 		function setVelocity(x:Number, y:Number) {
@@ -84,9 +91,9 @@ package {
 			if (isPerching) {
 				if ((perchEndTime > getTimer()) || (fatigue || anger || fear)) {
 					// still perching
-					setFatigue(fatigue - frameIncrement);
-					setAnger(anger - frameIncrement);
-					setFear(fear - frameIncrement);
+					setFatigue(fatigue - Game.perFrame);
+					setAnger(anger - Game.perFrame);
+					setFear(fear - Game.perFrame);
 					return;  // don't move
 				} else {
 					// done perching
@@ -106,14 +113,14 @@ package {
 				velocity.normalize(maxSpeed);
 
 				// increase fatigue
-				setFatigue(fatigue + frameIncrement);
+				setFatigue(fatigue + Game.perFrame);
 
 				// increase fear, more at higher speeds
-				setFear(fear + frameIncrement*(speed - maxSpeed));
+				setFear(fear + Game.perFrame*(speed - maxSpeed));
 
 			} else if (speed < maxSpeed/3) { // flying very slow
 				// decrease fatigue
-				setFatigue(fatigue - frameIncrement);
+				setFatigue(fatigue - Game.perFrame);
 			}
 
 			// calculate flocking
@@ -143,28 +150,38 @@ package {
 				if (distance < width*3) {
 					if (anger <= boids[i].anger) {
 						avoidCollision = avoidCollision.add(location.subtract(boids[i].location));
-						setAnger(anger + frameIncrement*10);
+						setAnger(anger + Game.perFrame*10);
 					} else {
-						boids[i].setFear(boids[i].fear + frameIncrement*10);
+						boids[i].setFear(boids[i].fear + Game.perFrame*10);
 					}
 				}
 			}
 
 			// startled boids ignore the flock and fly away from the startle location
 			if (isStartled) {
-				towardsFlock = startleOffset;
 				if (startleEndTime < getTimer()) {
 					isStartled = false;
+					avoid = null;
 					setFear(fear/2);
-					velocity = velocity.subtract(startleOffset);
+					//velocity = velocity.subtract(startleOffset);
+				} else {
+					towardsFlock = towards(location, avoid, 1/200);
 				}
 			}
 
 			// calculate center of flock
-			if (!isStartled && flyingBoids) towardsFlock = new Point((towardsFlock.x/flyingBoids - x)/200, (towardsFlock.y/flyingBoids - y)/200);
+			if (!isStartled && flyingBoids) {
+				towardsFlock.x /= flyingBoids;
+				towardsFlock.y /= flyingBoids;
+				towardsFlock = towards(location, towardsFlock, 1/200);
+			}
 
 			// calculate average velocity
-			if (nearBoids) matchVelocity = new Point((matchVelocity.x/nearBoids - velocity.x)/8, (matchVelocity.y/nearBoids - velocity.y)/8);
+			if (nearBoids) {
+				matchVelocity.x /= nearBoids;
+				matchVelocity.y /= nearBoids;
+				matchVelocity = towards(velocity, matchVelocity, 1/8);
+			}
 
 			// add up offsets
 			velocity = velocity.add(towardsFlock);
@@ -172,22 +189,24 @@ package {
 			velocity = velocity.add(matchVelocity);
 			velocity = velocity.add(towardsMouse(1/100));
 			velocity = velocity.add(stayOnScreen(5));
+			velocity = velocity.add(towards(location, avoid, -1/100));
 
 			// set velocity, location, and rotation
 			setVelocity(velocity.x, velocity.y);
 
 			// tired birds drift down
 			if (fatigue > 1/2) {
-				y += fatigue * frameIncrement * stage.height;
+				y += fatigue * Game.perFrame * stage.height;
 			}
 		}
 
+		function towards(start:Point, end:Point, distance:Number):Point {
+			if (!(start && end && distance)) return new Point();
+			return new Point((end.x-start.x)*distance, (end.y-start.y)*distance);
+		}
+
 		function towardsMouse(scale:Number):Point {
-			if (Game(parent).isMouseDown) {
-				var px = stage.mouseX - x;
-				var py = stage.mouseY - y;
-				return new Point(px*scale, py*scale);
-			}
+			if (Game(parent).isMouseDown) return towards(location, new Point(stage.mouseX, stage.mouseY), scale);
 			return new Point();
 		}
 
@@ -222,7 +241,8 @@ package {
 					var speed = Math.pow(range-distance,1.5)/range * amount;
 					var offset2 = new Point(0 - Math.sin(angle) * speed,
 											0 - Math.cos(angle) * speed);
-					boids[i].startleOffset = offset2;
+					//boids[i].startleOffset = offset2;
+					boids[i].avoid = location;
 
 					// use setVelocity's side effects, but keep the old velocity
 					var oldVelocity = boids[i].velocity;

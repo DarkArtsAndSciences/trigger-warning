@@ -2,6 +2,8 @@ package {
 	import flash.media.Sound;
 
 	public class Effect {
+		private static var game:Game;
+
 		var time:Number = 0;
 		var sound:Sound;
 		var action:Function;
@@ -10,6 +12,10 @@ package {
 			this.action = action;
 			this.sound = sound;
 			this.time = time;
+		}
+
+		public static function registerGame(g:Game) {
+			game = g;
 		}
 
 		public function affect(location):void {
