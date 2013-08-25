@@ -7,8 +7,14 @@ package {
 		static var boids = [];
 		var location:Point;  // convenience for x,y
 		var velocity:Point;
+
+		// moods
 		var startled = false;
 		var startleOffset:Point;
+		var anger = 0.0;		// red
+		var fear = 0.0;			// blue
+		var fatigue = 0.0;		// alpha
+		var infection = 0.0;	// green
 
 		public function Boid() {
 			boids.push(this);
@@ -32,14 +38,24 @@ package {
 		}
 
 		function onEnterFrame(e:Event):void {
+			// location
 			velocity = velocity.add(rules());
 			var speed = Point.distance(velocity, new Point);
 			var maxSpeed = 10;  // pixels per frame?
 			if (speed > maxSpeed) {
 				velocity = new Point(velocity.x/speed, velocity.y/speed);
 				velocity.normalize(maxSpeed);
+				fatigue += 1/100;
 			}
 			setVelocity(velocity.x, velocity.y);
+
+			// color
+			var tint = transform.colorTransform;
+			tint.redOffset   = 255*anger;
+			tint.greenOffset = 255*infection;
+			tint.blueOffset  = 255*fear;
+			transform.colorTransform = tint;
+			alpha = 1.0 - fatigue;
 		}
 
 		// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
@@ -76,11 +92,7 @@ package {
 				if (distance < range) {
 					// startle this boid
 					boids[i].startled = true;
-
-					// red tint
-					var tint = boids[i].transform.colorTransform;
-					tint.color = 0xFF0000;
-					boids[i].transform.colorTransform = tint;
+					boids[i].anger += 0.1;
 
 					// fly away from the location
 					var offset = location.subtract(boids[i].location);

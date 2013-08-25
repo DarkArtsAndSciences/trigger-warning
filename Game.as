@@ -45,7 +45,7 @@ package {
 		function onMouseClick(e:MouseEvent):void {
 			var sound = new CrashSound();
 			sound.play();
-			Boid.startle(new Point(e.localX, e.localY), 150, 3);
+			Boid.startle(new Point(e.localX, e.localY), 100, 1);
 		}
 
 		function updateClock(e:TimerEvent):void {
