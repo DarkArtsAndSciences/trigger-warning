@@ -40,13 +40,14 @@ clock_color   = white
 # loop until quit
 done = False
 start = time.time()
+offset = 0
 clock = pygame.time.Clock()
 while done == False:
 
 	# limit frame rate and cpu usage
 	clock.tick(frame_rate)
 	now = time.time()
-	since = now - start
+	since = now - start + offset
 	#print since
 
 	# handle events
@@ -55,8 +56,11 @@ while done == False:
 			done = True
 		if event.type == pygame.KEYDOWN:
 			if pygame.key.get_mods() & command_key:
-				if event.key == pygame.K_q:
+				if event.key == pygame.K_q:  # quit
 					done = True
+			else:
+				if event.key == pygame.K_r:  # rewind
+					offset -= 1
 
 	# draw
 	screen.fill(background_color)
@@ -79,7 +83,7 @@ while done == False:
 	seconds = abs(int(math.floor(since)%60))
 	seconds_zero = "0"*(seconds < 10)
 	tenths = int(since*10%10)
-	clock_string = "{}{}:{}{}.{}".format(minutes, sign, seconds_zero, seconds, tenths)
+	clock_string = "{}{}:{}{}.{}".format(sign, abs(minutes), seconds_zero, seconds, tenths)
 	clock_render = clock_font.render(clock_string, clock_aa, clock_color)
 	clock_width = 140  # fixes flicker, TODO: precalc from typical string
 	clock_location = [center[0]-clock_width/2, size[1]-50 - clock_font.get_ascent()]
