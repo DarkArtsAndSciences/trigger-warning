@@ -91,12 +91,26 @@ package {
 			rule3 = new Point((rule3.x/n - velocity.x)/8,
 							  (rule3.y/n - velocity.y)/8);
 
-			return rule1.add(rule2).add(rule3).add(rule4(0.01));
+			return rule1.add(rule2).add(rule3).add(rule4(0.01)).add(rule5(1));
 		}
 
 		// Boids try to fly towards the mouse.
 		function rule4(scale:Number):Point {
 			return new Point((mouseX+400-x)*scale, (mouseY+300-y)*scale);
+		}
+
+		// Boids try to stay on screen.
+		function rule5(amount:Number):Point {
+			var rule5 = new Point();
+			var xmin = 0;
+			var xmax = 800;
+			var ymin = 0;
+			var ymax = 600;
+			if (x < xmin) rule5.x = amount;
+			if (x > xmax) rule5.x = -amount;
+			if (y < ymin) rule5.y = amount;
+			if (y > ymax) rule5.y = -amount;
+			return rule5;
 		}
 
 		static function startle(location:Point, range:Number, amount:Number):void {
