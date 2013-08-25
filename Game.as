@@ -29,12 +29,12 @@ package {
 			// triggers
 			var gameOverWarning = new Warning(new SadSound(), "game over", null);
 			var gameOverEffect = new Effect(0, new FailSound(), gameOver);
-			gameOverTrigger = new Trigger(startTime + 20000, gameOverWarning, gameOverEffect);
+			gameOverTrigger = new Trigger(startTime + 30000, gameOverWarning, gameOverEffect);
 			gameOverTrigger.locationType = "center";
 			addChild(gameOverTrigger);
 
 			// boids
-			for (var i = 0; i < 20; i++) {
+			for (var i = 0; i < 25; i++) {
 				var b = new Boid();
 				addChild(b);
 			}
@@ -52,7 +52,7 @@ package {
 			isMouseDown = false;
 			var sound = new CrashSound();
 			sound.play();
-			Boid.startle(new Point(e.localX, e.localY), 100, 1);
+			Boid.startle(new Point(e.localX, e.localY), 100, 1, 0.1);
 		}
 
 		function updateClock(e:TimerEvent):void {
@@ -71,7 +71,7 @@ package {
 		}
 
 		function gameOver(location):void {
-			Boid.startle(location, 200, 10);
+			Boid.startle(location, 200, 10, 0.5);
 		}
 	}
 }

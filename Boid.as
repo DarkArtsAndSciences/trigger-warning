@@ -4,16 +4,20 @@ package {
 	import flash.geom.Point;
 	import flash.utils.*;
 
+	// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
+
 	public class Boid extends MovieClip {
 		static var boids = [];
 		var location:Point;  // convenience for x,y
 		var velocity:Point;
 
-		// moods
-		var startled = false;
+		var isStartled = false;
 		var startleOffset:Point;
+		var startleEndTime = 0;
+
 		var isPerching = false;
 		var perchEndTime = 0;
+
 		var anger = 0.0;		// red
 		var fear = 0.0;			// blue
 		var fatigue = 0.0;		// alpha
@@ -43,22 +47,34 @@ package {
 			location = new Point(this.x, this.y);
 		}
 
+		function setAnger(value:Number) {
+			anger = Math.max(Math.min(value, 1), 0);
+		}
+
+		function setFear(value:Number) {
+			fear = Math.max(Math.min(value, 1), 0);
+		}
+
+		function setFatigue(value:Number) {
+			fatigue = Math.max(Math.min(value, 1), 0);
+		}
+
 		function onEnterFrame(e:Event):void {
 			// set color based on mood
 			var tint = transform.colorTransform;
 			tint.redOffset   = 255*anger;
-			tint.greenOffset = 255*infection;
+			tint.greenOffset = 255*fatigue;
 			tint.blueOffset  = 255*fear;
 			transform.colorTransform = tint;
 
-			// tired birds fade out
-			alpha = 1-fatigue;
+			// sick birds fade out
+			alpha = 1-infection;
 
 			// perching
 			var groundLevel = stage.height - 10;
 			if (y > groundLevel) {
 				// start perching
-				if (!isPerching) {
+				if (!isPerching && (fatigue || anger || fear)) {
 					isPerching = true;
 					perchEndTime = getTimer()+10000;
 				}
@@ -66,73 +82,100 @@ package {
 				rotation = 90;
 			}
 			if (isPerching) {
-				if (perchEndTime > getTimer()) {
+				if ((perchEndTime > getTimer()) || (fatigue || anger || fear)) {
 					// still perching
-					fatigue = Math.max(fatigue - frameIncrement, 0);
-					anger = Math.max(anger - frameIncrement, 0);
-					fear = Math.max(fear - frameIncrement, 0);
+					setFatigue(fatigue - frameIncrement);
+					setAnger(anger - frameIncrement);
+					setFear(fear - frameIncrement);
 					return;  // don't move
 				} else {
 					// done perching
 					isPerching = false;
-					velocity.y -= 20;
+					velocity.x = 0;
+					velocity.y = -2;
 				}
 			}
 
-			// calculate new velocity
-			velocity = velocity.add(rules());
-
-			// tired birds have a lower max speed
+			// flying
 			var speed = Point.distance(velocity, new Point());
-			var maxSpeed = 10*(1-fatigue);  // pixels per frame?
-
+			var maxSpeed = 10*(1-fatigue);  // tired birds have a lower max speed
 			if (speed > maxSpeed) {  // flying too fast
 				// slow down
 				velocity.x /= speed;
 				velocity.y /= speed;
-				velocity.normalize((speed+maxSpeed)/2);
+				velocity.normalize(maxSpeed);
 
 				// increase fatigue
-				fatigue = Math.max(fatigue + frameIncrement, 0);
+				setFatigue(fatigue + frameIncrement);
+
+				// increase fear, more at higher speeds
+				setFear(fear + frameIncrement*(speed - maxSpeed));
 
 			} else if (speed < maxSpeed/3) { // flying very slow
 				// decrease fatigue
-				fatigue = Math.max(fatigue - frameIncrement, 0);
+				setFatigue(fatigue - frameIncrement);
 			}
 
-			// tired birds drift down
-			velocity.y += Math.abs(velocity.y) * fatigue / 2;
-
-			// set velocity, location, and rotation
-			setVelocity(velocity.x, velocity.y);
-		}
-
-		// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
-		function rules():Point {
+			// calculate flocking
 			var towardsFlock = new Point();
 			var avoidCollision = new Point();
 			var matchVelocity = new Point();
-
+			var flyingBoids = 0;
+			var nearBoids = 0;
 			for (var i in boids) {
 				if (this == boids[i]) continue;
-				towardsFlock.offset(boids[i].x, boids[i].y);
 				var distance = Point.distance(location, boids[i].location)
-				if (distance < stage.height/20)
+
+				if (!boids[i].isPerching) {
+					flyingBoids++;
+
+					// move towards the center of the flying flock
+					towardsFlock.offset(boids[i].x, boids[i].y);
+
+					// match velocity with nearby boids
+					if (distance < stage.width/2) {
+						nearBoids++;
+						matchVelocity = matchVelocity.add(boids[i].velocity);
+					}
+				}
+
+				// avoid collisions with nearby boids
+				if (distance < width*3) {
 					avoidCollision = avoidCollision.add(location.subtract(boids[i].location));
-				if (distance < stage.height/2)
-					matchVelocity = matchVelocity.add(boids[i].velocity);
+					setAnger(anger + frameIncrement);
+				}
 			}
 
-			var n = boids.length - 1;
-			towardsFlock = startled ? startleOffset : new Point((towardsFlock.x/n - x)/200, (towardsFlock.y/n - y)/200);
-			matchVelocity = new Point((matchVelocity.x/n - velocity.x)/8,
-							  (matchVelocity.y/n - velocity.y)/8);
+			// startled boids ignore the flock and fly away from the startle location
+			if (isStartled) {
+				towardsFlock = startleOffset;
+				if (startleEndTime < getTimer()) {
+					isStartled = false;
+					setFear(fear/2);
+					velocity = velocity.subtract(startleOffset);
+				}
+			}
 
-			var point = new Point();
-			point = towardsFlock.add(avoidCollision).add(matchVelocity);
-			point = point.add(towardsMouse(1/100));
-			point = point.add(stayOnScreen(5));
-			return point;
+			// calculate center of flock
+			if (!isStartled && flyingBoids) towardsFlock = new Point((towardsFlock.x/flyingBoids - x)/200, (towardsFlock.y/flyingBoids - y)/200);
+
+			// calculate average velocity
+			if (nearBoids) matchVelocity = new Point((matchVelocity.x/nearBoids - velocity.x)/8, (matchVelocity.y/nearBoids - velocity.y)/8);
+
+			// add up offsets
+			velocity = velocity.add(towardsFlock);
+			velocity = velocity.add(avoidCollision);
+			velocity = velocity.add(matchVelocity);
+			velocity = velocity.add(towardsMouse(1/100));
+			velocity = velocity.add(stayOnScreen(5));
+
+			// set velocity, location, and rotation
+			setVelocity(velocity.x, velocity.y);
+
+			// tired birds drift down
+			if (fatigue > 1/2) {
+				y += fatigue * frameIncrement * stage.height;
+			}
 		}
 
 		function towardsMouse(scale:Number):Point {
@@ -158,13 +201,16 @@ package {
 			return point;
 		}
 
-		static function startle(location:Point, range:Number, amount:Number):void {
+		static function startle(location:Point, range:Number, amount:Number, fear:Number):void {
 			for (var i in boids) {
 				var distance = Point.distance(location, boids[i].location);
 				if (distance < range) {
 					// startle this boid
-					boids[i].startled = true;
-					boids[i].anger += 0.1;
+					boids[i].isStartled = true;
+					boids[i].startleEndTime = getTimer()+10000;
+
+					// scare this boid
+					boids[i].setFear(boids[i].fear + fear);
 
 					// fly away from the location
 					var offset = location.subtract(boids[i].location);
