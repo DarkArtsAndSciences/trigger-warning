@@ -5,10 +5,11 @@ pygame.init()
 
 # colors
 black = [  0,  0,  0]
+gray  = [127,127,127]
 white = [255,255,255]
-blue =  [  0,  0,255]
+blue  = [  0,  0,255]
 green = [  0,255,  0]
-red =   [255,  0,  0]
+red   = [255,  0,  0]
 
 # settings
 frame_rate = 30
@@ -25,9 +26,11 @@ if platform.system() == 'Darwin': command_key = pygame.KMOD_META
 background_color = black
 
 warning_font = pygame.font.Font(None, 72)
+fps_font = pygame.font.Font(None, 14)
 warning_aa = True  # text antialiasing
+fps_aa = True
 warning_color = red
-warning_location = [400, 300]
+fps_color = white
 
 # loop until quit
 done = False
@@ -56,6 +59,11 @@ while done == False:
 	warning_render = warning_font.render(warning_string, warning_aa, warning_color)
 	warning_location = [center[0] - warning_render.get_width()/2, center[1] - warning_font.get_ascent()]
 	screen.blit(warning_render, warning_location)
+
+	fps_string = "fps: {}".format(int(clock.get_fps()))
+	fps_render = fps_font.render(fps_string, fps_aa, fps_color)
+	fps_location = [size[0]-10 - fps_render.get_width(), size[1]-10 - fps_font.get_ascent()]
+	screen.blit(fps_render, fps_location)
 
 	pygame.display.flip()
 
