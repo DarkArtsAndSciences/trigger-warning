@@ -1,4 +1,6 @@
+import math
 import platform
+import time
 
 import pygame
 pygame.init()
@@ -25,20 +27,27 @@ if platform.system() == 'Darwin': command_key = pygame.KMOD_META
 
 background_color = black
 
-warning_font = pygame.font.Font(None, 72)
-fps_font = pygame.font.Font(None, 14)
-warning_aa = True  # text antialiasing
-fps_aa = True
+warning_font  = pygame.font.Font(None, 72)
+fps_font      = pygame.font.Font(None, 14)
+clock_font    = pygame.font.Font(None, 72)
+warning_aa    = True  # text antialiasing
+fps_aa        = True
+clock_aa      = True
 warning_color = red
-fps_color = white
+fps_color     = white
+clock_color   = white
 
 # loop until quit
 done = False
+start = time.time()
 clock = pygame.time.Clock()
 while done == False:
 
 	# limit frame rate and cpu usage
 	clock.tick(frame_rate)
+	now = time.time()
+	since = now - start
+	#print since
 
 	# handle events
 	for event in pygame.event.get():
@@ -64,6 +73,18 @@ while done == False:
 	fps_render = fps_font.render(fps_string, fps_aa, fps_color)
 	fps_location = [size[0]-10 - fps_render.get_width(), size[1]-10 - fps_font.get_ascent()]
 	screen.blit(fps_render, fps_location)
+
+	minutes = int(math.floor(since/60))
+	sign = "-"*(minutes < 0)
+	seconds = abs(int(math.floor(since)%60))
+	seconds_zero = "0"*(seconds < 10)
+	tenths = int(since*10%10)
+	clock_string = "{}{}:{}{}.{}".format(minutes, sign, seconds_zero, seconds, tenths)
+	clock_render = clock_font.render(clock_string, clock_aa, clock_color)
+	clock_width = 140  # fixes flicker, TODO: precalc from typical string
+	clock_location = [center[0]-clock_width/2, size[1]-50 - clock_font.get_ascent()]
+
+	screen.blit(clock_render, clock_location)
 
 	pygame.display.flip()
 
