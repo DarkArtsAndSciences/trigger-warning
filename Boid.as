@@ -19,8 +19,8 @@ package {
 		public function Boid() {
 			boids.push(this);
 
-			x = 100 + Math.random() * 600;
-			y = 100 + Math.random() * 400;
+			x = Math.random() * 800;
+			y = Math.random() * 600;
 			location = new Point(x,y);
 			velocity = new Point(0,0);
 			startleOffset = new Point(0,0);
@@ -43,7 +43,7 @@ package {
 
 			// tired birds have a lower max speed
 			var speed = Point.distance(velocity, new Point());
-			var maxSpeed = 20*(1-fatigue);  // pixels per frame?
+			var maxSpeed = 10*(1-fatigue);  // pixels per frame?
 			if (speed > maxSpeed) {  // flying too fast
 				// slow down
 				velocity.x /= speed;
@@ -53,6 +53,9 @@ package {
 				// increase fatigue
 				fatigue += 1/300;
 				if (fatigue > 1) fatigue = 1;
+			} else if (speed < maxSpeed/2) {
+				// flying slowly, decrease fatigue
+				fatigue -= 1/300;
 			}
 
 			// tired birds drift down
@@ -74,43 +77,54 @@ package {
 
 		// Basic flocking rules from http://www.kfish.org/boids/pseudocode.html
 		function rules():Point {
-			var rule1 = new Point();
-			var rule2 = new Point();
-			var rule3 = new Point();
+			var towardsFlock = new Point();
+			var avoidCollision = new Point();
+			var matchVelocity = new Point();
 			for (var i in boids) {
 				if (this == boids[i]) continue;
-				rule1.offset(boids[i].x, boids[i].y);
+				towardsFlock.offset(boids[i].x, boids[i].y);
 				var distance = Point.distance(location, boids[i].location)
-				if (distance < 30)
-					rule2 = rule2.add(location.subtract(boids[i].location));
-				if (distance < 300)
-					rule3 = rule3.add(boids[i].velocity);
+				if (distance < stage.height/20)
+					avoidCollision = avoidCollision.add(location.subtract(boids[i].location));
+				if (distance < stage.height/2)
+					matchVelocity = matchVelocity.add(boids[i].velocity);
 			}
 			var n = boids.length - 1;
-			rule1 = startled ? startleOffset : new Point((rule1.x/n - x)/200, (rule1.y/n - y)/200);
-			rule3 = new Point((rule3.x/n - velocity.x)/8,
-							  (rule3.y/n - velocity.y)/8);
+			towardsFlock = startled ? startleOffset : new Point((towardsFlock.x/n - x)/200, (towardsFlock.y/n - y)/200);
+			matchVelocity = new Point((matchVelocity.x/n - velocity.x)/8,
+							  (matchVelocity.y/n - velocity.y)/8);
 
-			return rule1.add(rule2).add(rule3).add(rule4(0.01)).add(rule5(1));
+
+			var point = new Point();
+			point = towardsFlock.add(avoidCollision).add(matchVelocity);
+			point = point.add(towardsMouse(1/100));
+			point = point.add(stayOnScreen(5));
+			return point;
 		}
 
 		// Boids try to fly towards the mouse.
-		function rule4(scale:Number):Point {
-			return new Point((mouseX+400-x)*scale, (mouseY+300-y)*scale);
+		function towardsMouse(scale:Number):Point {
+			if (Game(parent).isMouseDown) {
+				var px = stage.mouseX - x;
+				var py = stage.mouseY - y;
+				return new Point(px*scale, py*scale);
+			}
+			return new Point();
 		}
 
 		// Boids try to stay on screen.
-		function rule5(amount:Number):Point {
-			var rule5 = new Point();
-			var xmin = 0;
-			var xmax = 800;
-			var ymin = 0;
-			var ymax = 600;
-			if (x < xmin) rule5.x = amount;
-			if (x > xmax) rule5.x = -amount;
-			if (y < ymin) rule5.y = amount;
-			if (y > ymax) rule5.y = -amount;
-			return rule5;
+		function stayOnScreen(amount:Number):Point {
+			var point = new Point();
+			var border = 10;
+			var xmin = border;
+			var xmax = stage.width - border;
+			var ymin = border;
+			var ymax = stage.height - border;
+			if (x < xmin) point.x = amount;
+			if (x > xmax) point.x = -amount;
+			if (y < ymin) point.y = amount;
+			if (y > ymax) point.y = -amount;
+			return point;
 		}
 
 		static function startle(location:Point, range:Number, amount:Number):void {

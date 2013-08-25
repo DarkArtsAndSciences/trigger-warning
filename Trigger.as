@@ -35,6 +35,7 @@ package {
 
 		public function saveLocation():void {
 			if (!locationType) location = null;
+			if (locationType == "center") location = new Point(400, 300);
 			if (locationType == "mouse") location = new Point(mouseX, mouseY);
 		}
 

@@ -8,6 +8,7 @@ package {
 	public class Game extends MovieClip {
 		var startTime:Number;
 		var elapsedTime:Number;
+		var isMouseDown = false;
 
 		var gameOverTrigger:Trigger;
 
@@ -16,7 +17,8 @@ package {
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 
 			// controls
-			stage.addEventListener(MouseEvent.CLICK, onMouseClick);
+			stage.addEventListener(MouseEvent.MOUSE_DOWN, mouseDown);
+			stage.addEventListener(MouseEvent.MOUSE_UP, mouseUp);
 
 			// clock
 			startTime = getTimer();
@@ -25,10 +27,10 @@ package {
 			clockUpdateTimer.start();
 
 			// triggers
-			var gameOverWarning = new Warning(new SadSound(), "game over in 10s", null);
-			var gameOverEffect = new Effect(0, new FailSound(), function(location){gameOver(location);});
-			gameOverTrigger = new Trigger(startTime + 2000, gameOverWarning, gameOverEffect);
-			gameOverTrigger.locationType = "mouse";
+			var gameOverWarning = new Warning(new SadSound(), "game over", null);
+			var gameOverEffect = new Effect(0, new FailSound(), gameOver);
+			gameOverTrigger = new Trigger(startTime + 20000, gameOverWarning, gameOverEffect);
+			gameOverTrigger.locationType = "center";
 			addChild(gameOverTrigger);
 
 			// boids
@@ -42,7 +44,12 @@ package {
 			Trigger.fire(elapsedTime);
 		}
 
-		function onMouseClick(e:MouseEvent):void {
+		function mouseDown(e:MouseEvent):void {
+			isMouseDown = true;
+		}
+
+		function mouseUp(e:MouseEvent):void {
+			isMouseDown = false;
 			var sound = new CrashSound();
 			sound.play();
 			Boid.startle(new Point(e.localX, e.localY), 100, 1);
@@ -64,7 +71,6 @@ package {
 		}
 
 		function gameOver(location):void {
-			trace("game over at " + location);
 			Boid.startle(location, 200, 10);
 		}
 	}
