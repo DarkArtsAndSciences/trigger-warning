@@ -69,9 +69,13 @@ while done == False:
 	pygame.draw.line(screen, white, [center[0], center[1]-10], [center[0], center[1]+10], 1)
 
 	warning_string = "Warning!"
+	warning_fade = (10-since)/10
 	warning_render = warning_font.render(warning_string, warning_aa, warning_color)
 	warning_location = [center[0] - warning_render.get_width()/2, center[1] - warning_font.get_ascent()]
-	screen.blit(warning_render, warning_location)
+	warning_surface = pygame.surface.Surface((warning_render.get_width(), warning_render.get_height()))
+	warning_surface.set_alpha(255*warning_fade)
+	warning_surface.blit(warning_render, (0, 0))
+	screen.blit(warning_surface, warning_location)
 
 	fps_string = "fps: {}".format(int(clock.get_fps()))
 	fps_render = fps_font.render(fps_string, fps_aa, fps_color)
