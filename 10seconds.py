@@ -188,6 +188,23 @@ class Boid:
 				return b.v
 		v += self.flock_rule(match_velocity, scale=1.0/8)
 
+		# Rule: Boids try to stay on screen
+		def stay_on_screen(border=0, speed=1):
+			if self.p.x < border:
+				x = (border - self.p.x)*speed
+			elif self.p.x > size[0]-border:
+				x = (size[0]-border - self.p.x)*speed
+			else:
+				x = 0
+			if self.p.y < border:
+				y = (border - self.p.y)*speed
+			elif self.p.y > size[1]-border:
+				y = (size[1]-border - self.p.y)*speed
+			else:
+				y = 0
+			return Point(x,y)
+		v += stay_on_screen(100,0.1)
+
 		# convert from per second to per frame
 		v /= frame_rate
 
