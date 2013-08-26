@@ -105,29 +105,77 @@ line_spacing = 2.5
 intro_offset = 100
 
 # boids
+class Point:
+	def __init__(self, x, y):
+		self.x = x
+		self.y = y
+	def __str__(self):
+		return "{},{}".format(self.x, self.y)
+	def __repr__(self):
+		return "Point({},{})".format(self.x, self.y)
+	def __add__(self, other):
+		return Point(self.x + other.x, self.y + other.y)
+	def __sub__(self, other):
+		return Point(self.x - other.x, self.y - other.y)
+	def __mul__(self, multiplier):
+		return Point(self.x * multiplier, self.y * multiplier)
+	def __div__(self, divisor):
+		return Point(self.x / divisor, self.y / divisor)
+	def __abs__(self):
+		return Point(abs(self.x), abs(self.y))
+	def distance(self, other):
+		d = other - self
+		return math.hypot(d.x, d.y)
+
 boids = []
 class Boid:
 	def __init__(self):
-		self.x, self.y = random.randrange(size[0]), random.randrange(size[1])
-		self.vx, self.vy = 0.0, 0.0
+		self.p = Point(random.randrange(size[0]), random.randrange(size[1]))
+		self.v = Point(0.0, 0.0)
 		self.size = 2
 		self.color = white
+		self.collisions = 0
 		boids.append(self)
 
 	def __str__(self):
-		return "boid at {},{}".format(self.x, self.y)
+		return "boid at {},{}".format(self.p)
 
 	def __repr__(self):
-		return "[Boid x={}, y={}]".format(self.x, self.y)
+		return "[Boid x={}, y={}]".format(self.p.x, self.p.y)
 
 	def draw(self, screen, fade=1):
 		surface = pygame.surface.Surface((self.size, self.size))
 		surface.set_alpha(255*fade)
 		pygame.draw.rect(surface, self.color, surface.get_rect())
-		screen.blit(surface, (self.x, self.y, self.size, self.size))
+		screen.blit(surface, (self.p.x, self.p.y, self.size, self.size))
 
 	def update(self):
-		pass
+		v = Point(0.0, 0.0)
+		v += self.random_rule()
+		v += self.flock_rule(lambda b: b.p, len(boids)-1, 1/100, 'towards')
+		def avoid_collision(b):
+			if self.p.distance(b.p) < 20:
+				d = self.p - b.p
+				self.collisions += 1
+				if (self.collisions > 3):
+					self.color = red
+				return d
+			return Point(0.0, 0.0)
+		v += self.flock_rule(avoid_collision)
+		self.v += v
+		self.p += self.v
+
+	def flock_rule(self, per_boid=None, average=1, scale=1, type='as-is'):
+		v = Point(0.0, 0.0)
+		for other_boid in boids:
+			if other_boid is self: continue
+			if per_boid: v += per_boid(other_boid)
+		v /= average
+		if type == 'as-is': return v * scale
+		if type == 'towards': return (v - self.p) * scale
+
+	def random_rule(self):
+		return Point(random.random()-0.5, random.random()-0.5)
 
 def generate_boids(number=10):
 	for n in range(number): Boid()
