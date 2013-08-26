@@ -126,7 +126,11 @@ class Point:
 	def distance(self, other):
 		d = other - self
 		return math.hypot(d.x, d.y)
-zero_point = Point(0, 0)
+	def velocity(self):
+		return Point(0,0).distance(self)
+	def speed(self):
+		return abs(self.velocity())
+zero_point = Point(0,0)
 center_point = Point(center[0], center[1])
 
 boids = []
@@ -184,8 +188,22 @@ class Boid:
 				return b.v
 		v += self.flock_rule(match_velocity, scale=1.0/8)
 
-		# update this boid's velocity and position
-		self.v += v / frame_rate
+		# convert from per second to per frame
+		v /= frame_rate
+
+		# update velocity
+		self.v += v
+
+		# speed limit
+		max_speed = 5
+		anger_speed_bonus = 5
+		anger_speed = min((self.collisions-10)/100.0,1.0) * anger_speed_bonus
+		current_max_speed = max_speed + anger_speed
+		if self.v.speed() > current_max_speed:
+			#print "speed limit {}".format(int(current_max_speed))
+			self.v /= self.v.speed() * current_max_speed
+
+		# update position
 		self.p += self.v
 
 	# given how to react to one other boid, calculate the outer loop
