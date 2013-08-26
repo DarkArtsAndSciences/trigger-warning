@@ -2,15 +2,29 @@ import math
 import platform
 import time
 
+class Trigger:
+	def __init__(self, x, y, start, end=None, live=True):
+		self.x = x
+		self.y = y
+		self.start = start
+		self.end = end or float('inf')
+		self.live = live
+
+	def __str__(self):
+		return "trigger at {},{}".format(self.x, self.y)
+
+	def get_rect(self):
+		return (self.x, self.y, trigger_size, trigger_size)
+
 class Warning:
 	def __init__(self, string, since):
 		self.string = string
 		self.since = since
 
 	def __str__(self):
-		return warning_string
+		return string
 
-	def draw(self, fade, screen):
+	def draw(self, screen, fade=1):
 		render = warning_font.render(self.string, warning_aa, warning_color)
 		location = [center[0] - render.get_width()/2, center[1] - warning_font.get_ascent()]
 		surface = pygame.surface.Surface((render.get_width(), render.get_height()))
@@ -42,6 +56,8 @@ command_key = pygame.KMOD_CTRL
 if platform.system() == 'Darwin': command_key = pygame.KMOD_META
 
 background_color = black
+trigger_color = green
+trigger_size = size[0]/40
 
 warning_font  = pygame.font.Font(None, 72)
 fps_font      = pygame.font.Font(None, 14)
@@ -69,9 +85,13 @@ intro_length = sum([len(s) for s in intro_strings])
 letters_per_second = intro_length/intro_time
 intro_pauses = [(0.95, 0.985), (1.0, 1.1)]
 intro_pauses = [(x*intro_time, y*intro_time) for x,y in intro_pauses]
-line_spacing = 2.0
+line_spacing = 2.5
+intro_offset = 100
 
-# warnings
+# triggers, warnings, and effects
+trigger_y = intro_offset + intro_font.get_linesize() * (1+(line_spacing-1)/2) - trigger_size/2
+triggers = [Trigger(size[0]/4,   trigger_y, 1),
+			Trigger(size[0]*3/4, trigger_y, 1)]
 warnings = [Warning("Warning!", intro_time + intro_fade_time + 1)]
 
 # loop until quit
@@ -116,6 +136,8 @@ while done == False:
 					paused = False
 
 	# draw
+
+	# alpha multiplier, 0.0 < fade < 1.0
 	def fade(show_since, fade_since=None, fade_length=10):
 		if not fade_since: fade_since = show_since
 		if since < show_since: return 0
@@ -150,15 +172,19 @@ while done == False:
 		except IndexError: strings = intro_strings
 		for string in strings:
 			string_render = intro_font.render(string, intro_aa, intro_color)
-			string_location = [100, 100 + j*intro_font.get_linesize()*line_spacing]
+			string_location = [intro_offset, intro_offset + j*intro_font.get_linesize()*line_spacing]
 			intro_surface.blit(string_render, string_location)
 			j += 1
 		screen.blit(intro_surface, (0,0))
 
+	# triggers
+	for trigger in [t for t in triggers if t.start < since < t.end]:
+		pygame.draw.ellipse(screen, trigger_color, trigger.get_rect())
+
 	# warnings, center
 	for warning in warnings:
-		fade = fade(warning.since)
-		if 0 < fade <= 1: warning.draw(fade, screen)
+		wf = fade(warning.since)
+		if 0 < wf <= 1: warning.draw(screen, wf)
 
 	# clock, bottom center
 	minutes = int(math.floor(since/60))
