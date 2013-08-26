@@ -71,8 +71,9 @@ warnings = [Warning("Warning!", intro_time+2)]
 
 # loop until quit
 done = False
+paused = False
 start = time.time()
-offset = 0
+offset = 0.0
 clock = pygame.time.Clock()
 while done == False:
 
@@ -80,6 +81,7 @@ while done == False:
 	clock.tick(frame_rate)
 
 	# game time
+	if paused: offset -= 1.0/frame_rate
 	now = time.time() + offset
 	since = now - start
 
@@ -87,13 +89,23 @@ while done == False:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			done = True
+
 		if event.type == pygame.KEYDOWN:
 			if pygame.key.get_mods() & command_key:
 				if event.key == pygame.K_q:  # quit
 					done = True
 			else:
+				if event.key == pygame.K_p:  # pause
+					paused = True
 				if event.key == pygame.K_r:  # rewind
 					offset -= 0.25
+
+		if event.type == pygame.KEYUP:
+			if pygame.key.get_mods() & command_key:
+				pass
+			else:
+				if event.key == pygame.K_p:  # unpause
+					paused = False
 
 	# draw
 	def fade(show_since, fade_since=None, fade_length=10):
