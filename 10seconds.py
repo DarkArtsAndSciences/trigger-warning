@@ -107,8 +107,8 @@ intro_offset = 100
 # boids
 class Point:
 	def __init__(self, x, y):
-		self.x = x
-		self.y = y
+		self.x = float(x)
+		self.y = float(y)
 	def __str__(self):
 		return "{},{}".format(self.x, self.y)
 	def __repr__(self):
@@ -126,12 +126,14 @@ class Point:
 	def distance(self, other):
 		d = other - self
 		return math.hypot(d.x, d.y)
+zero_point = Point(0, 0)
+center_point = Point(center[0], center[1])
 
 boids = []
 class Boid:
 	def __init__(self):
 		self.p = Point(random.randrange(size[0]), random.randrange(size[1]))
-		self.v = Point(0.0, 0.0)
+		self.v = zero_point
 		self.size = 2
 		self.color = white
 		self.collisions = 0
@@ -149,33 +151,63 @@ class Boid:
 		pygame.draw.rect(surface, self.color, surface.get_rect())
 		screen.blit(surface, (self.p.x, self.p.y, self.size, self.size))
 
+	# update this boids position
+	# v: new velocity
+	# b: other boid
 	def update(self):
-		v = Point(0.0, 0.0)
-		v += self.random_rule()
-		v += self.flock_rule(lambda b: b.p, len(boids)-1, 1/100, 'towards')
+		v = zero_point
+
+		# add a small amount of randomness
+		v += self.random_rule(1.0/100)
+
+		# Rule 1: Boids fly towards the flock's center
+		v += self.flock_rule(per_boid=lambda b: b.p, average=len(boids)-1, scale=1.0/100, type='towards')
+
+		# Rule 2: Boids keep a min distance away from other boids
+		collision_distance = 20
 		def avoid_collision(b):
-			if self.p.distance(b.p) < 20:
-				d = self.p - b.p
+			# if this boid is too close to that boid
+			if self.p.distance(b.p) < collision_distance:
+				# count near misses and get angry
 				self.collisions += 1
-				if (self.collisions > 3):
+				if (self.collisions > 10):
 					self.color = red
-				return d
-			return Point(0.0, 0.0)
+				# move this boid twice as far away
+				return self.p - b.p
 		v += self.flock_rule(avoid_collision)
-		self.v += v
+
+		# Rule 3: Boids try to fly as fast as nearby boids
+		match_velocity_distance = 100
+		def match_velocity(b):
+			# if this boid is close to that boid
+			if self.p.distance(b.p) < match_velocity_distance:
+				return b.v
+		v += self.flock_rule(match_velocity, scale=1.0/8)
+
+		# update this boid's velocity and position
+		self.v += v / frame_rate
 		self.p += self.v
 
-	def flock_rule(self, per_boid=None, average=1, scale=1, type='as-is'):
-		v = Point(0.0, 0.0)
+	# given how to react to one other boid, calculate the outer loop
+	# flock rules may have side effects for moods; don't touch the physics
+	#
+	# to return the flock's average, pass flocksize-1 to average
+	# to scale the result, pass a multiplier to scale
+	# type 'as-is' returns the resulting point
+	# type 'towards' returns a vector from self.p to the point
+	def flock_rule(self, per_boid=None, average=1.0, scale=1.0, type='as-is'):
+		v = zero_point
 		for other_boid in boids:
 			if other_boid is self: continue
-			if per_boid: v += per_boid(other_boid)
+			if per_boid: v += (per_boid(other_boid) or zero_point)
 		v /= average
+		#print "flock rule: returning {}/{}*{} {}".format(v, average, scale, type)
 		if type == 'as-is': return v * scale
-		if type == 'towards': return (v - self.p) * scale
+		if type == 'towards': return(v - self.p) * scale
 
-	def random_rule(self):
-		return Point(random.random()-0.5, random.random()-0.5)
+	# Rule random.random(): Boids move randomly
+	def random_rule(self, scale=1.0):
+		return Point((random.random()-0.5)*scale, (random.random()-0.5)*scale)
 
 def generate_boids(number=10):
 	for n in range(number): Boid()
@@ -199,7 +231,7 @@ done = False
 paused = False
 reset = False
 start = time.time()
-offset = 0.0
+offset = 0
 clock = pygame.time.Clock()
 while done == False:
 
