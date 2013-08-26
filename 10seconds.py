@@ -1,5 +1,6 @@
 import math
 import platform
+import random
 import time
 
 class Trigger:
@@ -9,9 +10,10 @@ class Trigger:
 		self.start = start
 		self.end = end or float('inf')
 		self.live = live
+		#print "created {}".format(self)
 
 	def __str__(self):
-		return "trigger at {},{}".format(self.x, self.y)
+		return "trigger at {},{} {}-{}".format(self.x, self.y, self.start, self.end)
 
 	def get_rect(self):
 		return (self.x, self.y, trigger_size, trigger_size)
@@ -21,9 +23,10 @@ class Warning:
 		self.string = string
 		self.start = trigger.start
 		self.end = trigger.start + 10
+		#print "created {}".format(self)
 
 	def __str__(self):
-		return string
+		return "warning {} at {}-{}".format(self.string, self.start, self.end)
 
 	def draw(self, screen, fade=1):
 		render = warning_font.render(self.string, warning_aa, warning_color)
@@ -39,6 +42,10 @@ class Effect:
 		self.start = trigger.start + 10
 		self.end = trigger.end + 10
 		self.live = live
+		#print "created {}".format(self)
+
+	def __str__(self):
+		return "effect at {}-{}: {}".format(self.start, self.end, self.effect)
 
 import pygame
 pygame.init()
@@ -97,19 +104,47 @@ intro_pauses = [(x*intro_time, y*intro_time) for x,y in intro_pauses]
 line_spacing = 2.5
 intro_offset = 100
 
+# boids
+boids = []
+class Boid:
+	def __init__(self):
+		self.x, self.y = random.randrange(size[0]), random.randrange(size[1])
+		self.vx, self.vy = 0.0, 0.0
+		self.size = 2
+		self.color = white
+		boids.append(self)
+
+	def __str__(self):
+		return "boid at {},{}".format(self.x, self.y)
+
+	def __repr__(self):
+		return "[Boid x={}, y={}]".format(self.x, self.y)
+
+	def draw(self, screen, fade=1):
+		surface = pygame.surface.Surface((self.size, self.size))
+		surface.set_alpha(255*fade)
+		pygame.draw.rect(surface, self.color, surface.get_rect())
+		screen.blit(surface, (self.x, self.y, self.size, self.size))
+
+	def update(self):
+		pass
+
+def generate_boids(number=10):
+	for n in range(number): Boid()
+
 # triggers, warnings, and effects
 trigger_y = intro_offset + intro_font.get_linesize() * (1+(line_spacing-1)/2) - trigger_size/2
 triggers = [Trigger(None, None, intro_time + intro_fade_time + 1),  # start game
 			Trigger(size[0]/4,   trigger_y, 1, float('inf'), False),  # left demo
 			Trigger(size[0]*3/4, trigger_y, 1, float('inf'), False)]  # right demo
-
-warnings = [Warning("Warning!", triggers[0])]
-
 def enable_triggers():
-	print "enable triggers"
 	for trigger in triggers:
 		trigger.live = True
-effects = [Effect(enable_triggers, triggers[0])]
+
+warnings = [Warning("Warning!", triggers[0])]  # start game
+
+effects = [Effect(generate_boids, triggers[0]),
+		   Effect(enable_triggers, triggers[0])]
 
 # loop until quit
 done = False
@@ -202,14 +237,19 @@ while done == False:
 			trigger_color = dead_trigger_color
 		pygame.draw.ellipse(screen, trigger_color, trigger.get_rect())
 
-	# warnings, center
+	# boids
+	for boid in boids:
+		boid.update()
+		boid.draw(screen)
+
+	# warnings
 	for warning in warnings:
 		wf = fade(warning.start)
 		if 0 < wf <= 1: warning.draw(screen, wf)
 
 	# effects
 	for effect in effects:
-		if not effect.live and effect.start < since < effect.end:
+		if (not effect.live) and (effect.start < since < effect.end):
 			effect.live = True
 			effect.effect()
 
