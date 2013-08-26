@@ -136,11 +136,22 @@ center_point = Point(center[0], center[1])
 boids = []
 class Boid:
 	def __init__(self):
+		# physics
 		self.p = Point(random.randrange(size[0]), random.randrange(size[1]))
 		self.v = zero_point
-		self.size = 2
+		self.size = random.randrange(1,4)
+
+		# display
 		self.color = white
+
+		# mood
 		self.collisions = 0
+		self.last_mood_change = 0
+
+		# boids change their mood no more often than once per second,
+		# but some boids may wait up to five seconds longer
+		self.mood_length = 1 + 5*random.random()
+
 		boids.append(self)
 
 	def __str__(self):
@@ -159,29 +170,25 @@ class Boid:
 	# v: new velocity
 	# b: other boid
 	def update(self):
-		v = zero_point
-
 		# add a small amount of randomness
-		v += self.random_rule(1.0/100)
+		v = self.random_rule(1.0/100)
 
 		# Rule 1: Boids fly towards the flock's center
 		v += self.flock_rule(per_boid=lambda b: b.p, average=len(boids)-1, scale=1.0/100, type='towards')
 
 		# Rule 2: Boids keep a min distance away from other boids
-		collision_distance = 20
+		collision_distance = self.size * 2
 		def avoid_collision(b):
 			# if this boid is too close to that boid
 			if self.p.distance(b.p) < collision_distance:
 				# count near misses and get angry
 				self.collisions += 1
-				if (self.collisions > 10):
-					self.color = red
 				# move this boid twice as far away
 				return self.p - b.p
 		v += self.flock_rule(avoid_collision)
 
 		# Rule 3: Boids try to fly as fast as nearby boids
-		match_velocity_distance = 100
+		match_velocity_distance = self.size * 100
 		def match_velocity(b):
 			# if this boid is close to that boid
 			if self.p.distance(b.p) < match_velocity_distance:
@@ -244,7 +251,19 @@ class Boid:
 	def random_rule(self, scale=1.0):
 		return Point((random.random()-0.5)*scale, (random.random()-0.5)*scale)
 
-def generate_boids(number=10):
+	def change_mood(self, now_raw):
+		# boids have short memories
+		if now_raw < boid.last_mood_change + boid.mood_length: return
+		boid.last_mood_change = now_raw
+
+		# forget collisions
+		if self.collisions: self.collisions /= 2
+
+		# update color
+		if (self.collisions > 10): self.color = blue
+		if (self.collisions > 20): self.color = red
+
+def generate_boids(number=20):
 	for n in range(number): Boid()
 
 # triggers, warnings, and effects
@@ -354,6 +373,7 @@ while done == False:
 
 	# boids
 	for boid in boids:
+		boid.change_mood(now_raw)
 		boid.update()
 		boid.draw(screen)
 
