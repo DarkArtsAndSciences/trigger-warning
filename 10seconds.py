@@ -386,10 +386,6 @@ while done == False:
 	fps_location = [size[0]-10 - fps_render.get_width(), size[1]-10 - fps_font.get_ascent()]
 	screen.blit(fps_render, fps_location)
 
-	# central crosshairs  TODO: follow mouse?
-	pygame.draw.line(screen, white, [center[0]-10, center[1]], [center[0]+10, center[1]], 1)
-	pygame.draw.line(screen, white, [center[0], center[1]-10], [center[0], center[1]+10], 1)
-
 	pygame.display.flip()
 
 # quit
