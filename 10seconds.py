@@ -57,21 +57,27 @@ clock_color   = white
 intro_color   = white
 
 # intro / help
-letters_per_second = 12
-one_second_pause = " "*letters_per_second
-intro_time = 20
-intro_strings = ["A Trigger has a Warning and an Effect."+one_second_pause,
-	"The Effect occurs ten seconds after the Warning."+one_second_pause,
-	"Triggers can not be changed."+one_second_pause,
+text_pause = " "*10
+intro_time = 10  # TODO: 10 for test, 20-30 for release
+intro_fade_time = 2
+intro_strings = ["These are Triggers."+text_pause*5,
+	"A Trigger has a Warning and an Effect."+text_pause,
+	"The Effect happens ten seconds after the Warning."+text_pause,
+	"This time can not be changed."+text_pause*5,
 	"Time itself can be changed."]
-line_spacing = 1.5
+intro_length = sum([len(s) for s in intro_strings])
+letters_per_second = intro_length/intro_time
+intro_pauses = [(0.95, 0.985), (1.0, 1.1)]
+intro_pauses = [(x*intro_time, y*intro_time) for x,y in intro_pauses]
+line_spacing = 2.0
 
 # warnings
-warnings = [Warning("Warning!", intro_time+2)]
+warnings = [Warning("Warning!", intro_time + intro_fade_time + 1)]
 
 # loop until quit
 done = False
 paused = False
+reset = False
 start = time.time()
 offset = 0.0
 clock = pygame.time.Clock()
@@ -82,7 +88,9 @@ while done == False:
 
 	# game time
 	if paused: offset -= 1.0/frame_rate
-	now = time.time() + offset
+	now_raw = time.time()
+	now = now_raw + offset
+	since_raw = now_raw - start
 	since = now - start
 
 	# handle events
@@ -119,7 +127,15 @@ while done == False:
 	screen.fill(background_color)
 
 	# intro
-	if (since < intro_time):
+	if (since < intro_time + intro_fade_time):
+		for pause_start, pause_end in intro_pauses:
+			if not paused and pause_start < since_raw < pause_end:
+				paused = True
+				reset = True
+			if paused and reset and since_raw > pause_end:
+				paused = False
+				reset = False
+
 		letters = int(since * letters_per_second)
 		i = 0
 		used = 0
@@ -128,7 +144,7 @@ while done == False:
 			except IndexError: break
 			i += 1
 		intro_surface = pygame.surface.Surface((size[0], size[1]))
-		intro_surface.set_alpha(255*fade(0, intro_time-1, 1))
+		intro_surface.set_alpha(255*fade(0, intro_time, intro_fade_time))
 		j = 0
 		try: strings = intro_strings[:i] + [intro_strings[i][:letters-used]]
 		except IndexError: strings = intro_strings
