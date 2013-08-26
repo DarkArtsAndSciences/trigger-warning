@@ -17,9 +17,10 @@ class Trigger:
 		return (self.x, self.y, trigger_size, trigger_size)
 
 class Warning:
-	def __init__(self, string, since):
+	def __init__(self, string, trigger):
 		self.string = string
-		self.since = since
+		self.start = trigger.start
+		self.end = trigger.start + 10
 
 	def __str__(self):
 		return string
@@ -32,6 +33,13 @@ class Warning:
 		surface.blit(render, (0,0))
 		screen.blit(surface, location)
 
+class Effect:
+	def __init__(self, effect, trigger, live=False):
+		self.effect = effect
+		self.start = trigger.start + 10
+		self.end = trigger.end + 10
+		self.live = live
+
 import pygame
 pygame.init()
 
@@ -39,7 +47,7 @@ pygame.init()
 black = [  0,  0,  0]
 gray  = [127,127,127]
 white = [255,255,255]
-blue  = [  0,  0,255]
+blue  = [  0,127,255]
 green = [  0,255,  0]
 red   = [255,  0,  0]
 
@@ -56,7 +64,8 @@ command_key = pygame.KMOD_CTRL
 if platform.system() == 'Darwin': command_key = pygame.KMOD_META
 
 background_color = black
-trigger_color = green
+live_trigger_color = green
+dead_trigger_color = blue
 trigger_size = size[0]/40
 
 warning_font  = pygame.font.Font(None, 72)
@@ -90,9 +99,17 @@ intro_offset = 100
 
 # triggers, warnings, and effects
 trigger_y = intro_offset + intro_font.get_linesize() * (1+(line_spacing-1)/2) - trigger_size/2
-triggers = [Trigger(size[0]/4,   trigger_y, 1),
-			Trigger(size[0]*3/4, trigger_y, 1)]
-warnings = [Warning("Warning!", intro_time + intro_fade_time + 1)]
+triggers = [Trigger(None, None, intro_time + intro_fade_time + 1),  # start game
+			Trigger(size[0]/4,   trigger_y, 1, float('inf'), False),  # left demo
+			Trigger(size[0]*3/4, trigger_y, 1, float('inf'), False)]  # right demo
+
+warnings = [Warning("Warning!", triggers[0])]
+
+def enable_triggers():
+	print "enable triggers"
+	for trigger in triggers:
+		trigger.live = True
+effects = [Effect(enable_triggers, triggers[0])]
 
 # loop until quit
 done = False
@@ -178,13 +195,23 @@ while done == False:
 		screen.blit(intro_surface, (0,0))
 
 	# triggers
-	for trigger in [t for t in triggers if t.start < since < t.end]:
+	for trigger in [t for t in triggers if t.start < since < t.end and t.x and t.y]:
+		if trigger.live:
+			trigger_color = live_trigger_color
+		else:
+			trigger_color = dead_trigger_color
 		pygame.draw.ellipse(screen, trigger_color, trigger.get_rect())
 
 	# warnings, center
 	for warning in warnings:
-		wf = fade(warning.since)
+		wf = fade(warning.start)
 		if 0 < wf <= 1: warning.draw(screen, wf)
+
+	# effects
+	for effect in effects:
+		if not effect.live and effect.start < since < effect.end:
+			effect.live = True
+			effect.effect()
 
 	# clock, bottom center
 	minutes = int(math.floor(since/60))

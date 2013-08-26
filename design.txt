@@ -87,3 +87,7 @@ Then:
 	Play/pause/win/fail handling.
 
 	If the physical point of the game is to control the boids and avoid unwanted collisions, Easy/Medium/Hard modes may be as simple as increasing the number of boids.
+
+	Warn the player for "cheating".
+		Trying to rewind a forward-only level, etc.
+		On some levels, "cheating" may be the way to win.
