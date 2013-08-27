@@ -10,6 +10,7 @@ class Trigger:
 		self.start = start
 		self.end = end or float('inf')
 		self.live = live
+		self.triggered = False
 		#print "created {}".format(self)
 
 	def __str__(self):
@@ -57,6 +58,7 @@ white = [255,255,255]
 blue  = [  0,127,255]
 green = [  0,255,  0]
 red   = [255,  0,  0]
+yellow = [255, 255, 0]
 
 # settings
 frame_rate = 30
@@ -149,6 +151,7 @@ class Boid:
 		self.color = white
 
 		# mood
+		self.triggered = False
 		self.collisions = 0
 		self.last_mood_change = 0
 
@@ -159,16 +162,19 @@ class Boid:
 		boids.append(self)
 
 	def __str__(self):
-		return "boid at {},{}".format(self.p)
+		return "boid at {},{}".format(self.p.x, self.p.y)
 
 	def __repr__(self):
 		return "[Boid x={}, y={}]".format(self.p.x, self.p.y)
+
+	def get_rect(self):
+		return (self.p.x, self.p.y, self.size, self.size)
 
 	def draw(self, screen, fade=1):
 		surface = pygame.surface.Surface((self.size, self.size))
 		surface.set_alpha(255*fade)
 		pygame.draw.rect(surface, self.color, surface.get_rect())
-		screen.blit(surface, (self.p.x, self.p.y, self.size, self.size))
+		screen.blit(surface, self.get_rect())
 
 	# update this boids position
 	# v: new velocity
@@ -290,6 +296,7 @@ class Boid:
 		# update color
 		if (self.collisions > 10): self.color = blue
 		if (self.collisions > 20): self.color = red
+		if (self.triggered): self.color = yellow
 
 def generate_boids(number=20):
 	for n in range(number): Boid()
@@ -395,6 +402,13 @@ while done == False:
 	for trigger in [t for t in triggers if t.start < since < t.end and t.x and t.y]:
 		if trigger.live:
 			trigger_color = live_trigger_color
+			for b in boids:
+				t_rect = pygame.Rect(trigger.get_rect())
+				b_rect = pygame.Rect(b.get_rect())
+				if t_rect.colliderect(b_rect):
+					#print "{} hit {}".format(boid, trigger)
+					trigger.triggered = True
+					b.triggered = True
 		else:
 			trigger_color = dead_trigger_color
 		pygame.draw.ellipse(screen, trigger_color, trigger.get_rect())
