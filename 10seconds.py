@@ -40,6 +40,7 @@ class Warning:
 class Effect:
 	def __init__(self, effect, trigger, live=False):
 		self.effect = effect
+		self.trigger = trigger
 		self.start = trigger.start + 10
 		self.end = trigger.end + 10
 		self.live = live
@@ -92,7 +93,7 @@ intro_color   = white
 
 # intro / help
 text_pause = " "*10
-intro_time = 2  # TODO: 10 for test, 20-30 for release
+intro_time = 20  # TODO: 10 for test, 20-30 for release
 intro_fade_time = 2
 intro_strings = ["These are Triggers."+text_pause*5,
 	"A Trigger has a Warning and an Effect."+text_pause,
@@ -312,16 +313,22 @@ def enable_triggers():
 
 warnings = [Warning("Warning!", triggers[0])]  # start game
 
+def rewind_time():
+	pass
+	#print "rewind time"
+
 effects = [Effect(generate_boids, triggers[0]),
-		   Effect(enable_triggers, triggers[0])]
+		   Effect(enable_triggers, triggers[0]),
+		   Effect(rewind_time, triggers[1]),
+		   Effect(rewind_time, triggers[2])]
 
 # loop until quit
 done = False
 paused = False
 reset = False
 start = time.time()
-offset = 0
 clock = pygame.time.Clock()
+offset = 0
 while done == False:
 
 	# limit frame rate and cpu usage
@@ -409,6 +416,9 @@ while done == False:
 					#print "{} hit {}".format(boid, trigger)
 					trigger.triggered = True
 					b.triggered = True
+					for effect in effects:
+						if effect.trigger is trigger:
+							effect.effect()
 		else:
 			trigger_color = dead_trigger_color
 		pygame.draw.ellipse(screen, trigger_color, trigger.get_rect())
