@@ -1,3 +1,26 @@
+"""
+Ludum Dare 27: 10 Seconds
+Trigger Warning
+   by
+Dark Arts and Sciences
+
+Boids pseudocode from [http://www.kfish.org/boids/pseudocode.html], ported during the competition.
+
+Requires python and pygame.
+
+Controls:
+	Hold down the mouse to attract boids.
+	Boids set off triggers that they touch.
+	Boids are yellow if they have touched a trigger, blue if they're angry about other boids flying too close, and red if they're very angry.
+
+Luckily for you, I ran out of time.
+Turning boids yellow is the ONLY thing triggers do.
+I did not implement any painful triggers. (You're welcome.)
+
+For future pain-enhanced versions, visit:
+	darkartsandsciences.com
+"""
+
 import math
 import platform
 import random
