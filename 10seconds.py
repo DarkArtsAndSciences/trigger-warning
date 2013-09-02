@@ -20,11 +20,15 @@ I did not implement any painful triggers. (You're welcome.)
 For future pain-enhanced versions, visit:
 	darkartsandsciences.com
 
-Touch:
+***
 
 The last bug I couldn't fix before the Ludum Dare deadline looks like a one-line problem. Let's see how long it takes me to actually fix it.
 
 Goal: when boids turn yellow, they also rewind the timer by one second.
+
+Result: Yes, all I had to do was declare the variable as global. Four minutes including testing.
+
+New feature: Trigger a boid, time rewinds by a second. Trigger enough boids at once, and you end up back in the intro.
 """
 
 import math
