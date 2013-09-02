@@ -19,6 +19,12 @@ I did not implement any painful triggers. (You're welcome.)
 
 For future pain-enhanced versions, visit:
 	darkartsandsciences.com
+
+Touch:
+
+The last bug I couldn't fix before the Ludum Dare deadline looks like a one-line problem. Let's see how long it takes me to actually fix it.
+
+Goal: when boids turn yellow, they also rewind the timer by one second.
 """
 
 import math
