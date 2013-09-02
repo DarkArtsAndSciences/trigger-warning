@@ -343,8 +343,8 @@ def enable_triggers():
 warnings = [Warning("Warning!", triggers[0])]  # start game
 
 def rewind_time():
-	pass
-	#print "rewind time"
+	global offset
+	offset -= 1
 
 effects = [Effect(generate_boids, triggers[0]),
 		   Effect(enable_triggers, triggers[0]),
