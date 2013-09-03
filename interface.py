@@ -1,5 +1,6 @@
-import pygame
+import datetime
 import random
+import pygame
 
 """
 Color
@@ -146,6 +147,27 @@ def draw_title(screen, title):
 def draw_crosshairs(screen, x, y, color='white', size=1, width=1):
 	pygame.draw.line(screen, get_color(color), [x-size, y], [x+size, y], width)
 	pygame.draw.line(screen, get_color(color), [x, y-size], [x, y+size], width)
+
+def draw_clock(screen, timedelta):
+	total_seconds = timedelta.total_seconds()
+	clock_string = '-'*(total_seconds<0) + str(datetime.timedelta(seconds=abs(total_seconds)))
+	dot = clock_string.index('.')
+	if dot: clock_string = clock_string[:dot+2]
+
+	font_settings = get_font_settings('clock_font')
+	clock_font = pygame.font.Font(font_settings['name'], font_settings['size'])
+	clock_render = clock_font.render(clock_string, font_settings['aa'], get_color('clock_color'))
+	clock_width = 140  # fixes flicker, TODO: precalc from typical string
+	clock_location = [cx()-clock_width/2, by()-50 - clock_font.get_ascent()]
+	screen.blit(clock_render, clock_location)
+
+def draw_fps(screen, fps):
+	fps_string = "fps: {}".format(fps)
+	font_settings = get_font_settings('fps_font')
+	fps_font = pygame.font.Font(font_settings['name'], font_settings['size'])
+	fps_render = fps_font.render(fps_string, font_settings['aa'], get_color('fps_color'))
+	fps_location = [bx(10) - fps_render.get_width(), by(10) - fps_font.get_ascent()]
+	screen.blit(fps_render, fps_location)
 
 """
 The current state's draw routine is called once per frame.
