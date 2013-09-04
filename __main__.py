@@ -23,9 +23,9 @@ settings = {
 	'dead_trigger_color': 'blue',
 	'warning_color': 'red',
 
-	'clock_font': {'name':None, 'scale':4},
+	'clock_font': {'scale':4},
 	'clock_color': 'yellow',
-	'fps_font': {'name':None, 'scale':1},
+	'fps_font': {'scale':1},
 	'fps_color': 'yellow',
 
 	'credits': """www.darkartsandsciences.com"""
@@ -45,10 +45,14 @@ def get_since(): return get_time() - start_time
 def get_real_since(): return get_real_time() - start_time
 
 offset = 0
-def offset_time(new_offset):
+def offset_time(seconds=0, frames=0):
 	global offset
-	offset += new_offset
+	offset += seconds
+	offset += float(frames)/interface.settings['frame_rate']
+	#utils.log_function_call(offset)
+
 state.add_event_handler(lambda: offset_time(-0.25), '', pygame.K_r)
+state.add_event_handler(offset_time, '', event_type=state.EVENT_TIMECHANGE)
 
 """
 Game mechanics
@@ -72,7 +76,7 @@ if __name__ == "__main__":
 
 		"""Redraw screen."""
 		screen.fill(interface.get_color('background_color'))
-		interface.draw_state[state.state](screen, state.state)
+		interface.draw_state[state.state](screen, get_since())
 		interface.draw_clock(screen, get_since())
 		interface.draw_fps(screen, int(clock.get_fps()))
 		pygame.display.flip()  # required for double buffering

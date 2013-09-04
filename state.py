@@ -6,7 +6,23 @@ import utils  # log_function_call()
 """
 Custom event types
 """
-EVENT_STATECHANGE = pygame.USEREVENT
+EVENT_STATECHANGE = pygame.USEREVENT + 1
+EVENT_TIMECHANGE = pygame.USEREVENT + 2
+
+event_types = {
+	'state change': EVENT_STATECHANGE,
+	'time change': EVENT_TIMECHANGE
+}
+
+"""
+Event posting
+"""
+def post_event(event, **kwargs):
+	if isinstance(event, int) and pygame.NOEVENT < int(event) < pygame.NUMEVENTS:
+		e = pygame.event.Event(event, kwargs)
+	else:
+		e = pygame.event.Event(event_types[str(event)], kwargs)
+	pygame.event.post(e)
 
 """
 Event handlers
@@ -25,7 +41,7 @@ def handle_user_event(event):
 	for h, et, st, sk, sm, sud in event_handlers:
 		if st in ['',state] and et==event.type:
 			#utils.log_function_call(h.__name__)
-			h(event)
+			h(**event.dict)
 
 """Platform-independent command key accelerator for keyboard shortcuts."""
 command_key = pygame.KMOD_CTRL
@@ -65,19 +81,19 @@ add_event_handler(quit, shortcut_key=pygame.K_q, shortcut_mod=command_key, event
 States
 """
 state = 'menu'  # TODO: start with loading screen
-def change_state(event):
+def change_state(new_state):
 	global state
 	old_state = state
-	state = event.state
+	state = new_state
 	#print 'Changed from state {} to {}.'.format(old_state, state)
 add_event_handler(change_state, event_type=EVENT_STATECHANGE)
 
 """State transition events."""
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='play')), 'menu', pygame.K_SPACE)  # start game -> press SPACE on main menu
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='play')), 'menu', pygame.K_SPACE)  # start game -> press SPACE on main menu
 
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='menu')), 'play', pygame.K_ESCAPE)  # end game (menu) -> press ESC during play
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='lose')), 'play', pygame.K_l)  # end game (lose) -> press L during play
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='win')), 'play', pygame.K_w)  # end game (win) -> press W during play
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='menu')), 'play', pygame.K_ESCAPE)  # end game (menu) -> press ESC during play
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='lose')), 'play', pygame.K_l)  # end game (lose) -> press L during play
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='win')), 'play', pygame.K_w)  # end game (win) -> press W during play
 
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='menu')), 'lose', pygame.K_ESCAPE)  # return to menu -> press ESC on lose screen
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='menu')), 'win', pygame.K_ESCAPE)  # return to menu -> press ESC on win screen

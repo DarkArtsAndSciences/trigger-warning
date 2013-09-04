@@ -2,6 +2,8 @@ import datetime
 import random
 import pygame
 
+import state
+
 """
 Color
 """
@@ -38,7 +40,7 @@ settings = {  # default settings, overriden in init()
 	'panic_color': 'rotate: red, cyan, yellow, magenta, green, blue',
 	'color_rotation_speed': 4,  # frames per color
 
-	'default_font': {'name':None, 'scale':1, 'aa':True},
+	'default_font': {'name':None, 'scale':1.5, 'aa':True, 'color':'foreground_color'},
 	'title_font': {'name':None, 'scale':4},  # TODO: fancy font name
 }
 settings['mode'] = pygame.DOUBLEBUF  # requires flip() after draw loop
@@ -116,7 +118,7 @@ def bx(border=0): return settings['size'][0] - border - 1
 def by(border=0): return settings['size'][1] - border - 1
 
 """Shortcut for relative font sizes."""
-def get_font_size(scale=1): return int(1+settings['size'][1]/40)*scale  # 16 at 800x600
+def get_font_size(scale=1): return int(int(1+settings['size'][1]/40)*scale)  # 16 at 800x600
 
 """
 Text alignment
@@ -131,68 +133,101 @@ def get_text_y(render, y, align, font=None):
 	if align == 'top':    return y
 	if align == 'center': return y - render.get_height()/2
 	if align == 'baseline':  return y - font.get_ascent()
-	if align == 'bottom':  return y + render.get_height()
+	if align == 'bottom':  return y - render.get_height()
 
 """
 Drawing utilities
 """
-def draw_title(screen, title):
-	font_settings = get_font_settings('title_font')
-	title_font = pygame.font.Font(font_settings['name'], font_settings['size'])
-	title_render = title_font.render(title, font_settings['aa'], get_color('title_color'))
-	title_location = [get_text_x(title_render, cx(), 'center'),
-					  get_text_y(title_render, cy()/4, 'center')]
-	screen.blit(title_render, title_location)
-
 def draw_crosshairs(screen, x, y, color='white', size=1, width=1):
 	pygame.draw.line(screen, get_color(color), [x-size, y], [x+size, y], width)
 	pygame.draw.line(screen, get_color(color), [x, y-size], [x, y+size], width)
+
+def draw_text(screen, text, x=0, y=0, font_name='default_font', xalign='left', yalign='top', line_spacing=1.0):
+
+	fs = get_font_settings(font_name)
+	font = pygame.font.Font(fs['name'], fs['size'])
+
+	lines = text.split('\n')
+	renders = [font.render(line, fs['aa'], get_color(fs['color'])) for line in lines]
+	width = max([r.get_width() for r in renders])
+	line_height = font.get_linesize() * line_spacing
+	height = line_height * len(lines)
+
+	container = pygame.surface.Surface((width, height))
+	line_y = 0
+	for render in renders:
+		line_x = 0-get_text_x(container, 0, xalign)
+		location = [get_text_x(render, line_x, xalign), line_y]
+		container.blit(render, location)
+		line_y += line_height
+
+	location = [get_text_x(container, x, xalign), get_text_y(renders[0], y, yalign, font)]
+	screen.blit(container, location)
 
 def draw_clock(screen, timedelta):
 	total_seconds = timedelta.total_seconds()
 	clock_string = '-'*(total_seconds<0) + str(datetime.timedelta(seconds=abs(total_seconds)))
 	dot = clock_string.index('.')
 	if dot: clock_string = clock_string[:dot+2]
-
-	font_settings = get_font_settings('clock_font')
-	clock_font = pygame.font.Font(font_settings['name'], font_settings['size'])
-	clock_render = clock_font.render(clock_string, font_settings['aa'], get_color('clock_color'))
-	clock_width = 140  # fixes flicker, TODO: precalc from typical string
-	clock_location = [cx()-clock_width/2, by()-50 - clock_font.get_ascent()]
-	screen.blit(clock_render, clock_location)
+	draw_text(screen, clock_string, cx(), by(50), 'clock_font', 'center', 'baseline')
 
 def draw_fps(screen, fps):
-	fps_string = "fps: {}".format(fps)
-	font_settings = get_font_settings('fps_font')
-	fps_font = pygame.font.Font(font_settings['name'], font_settings['size'])
-	fps_render = fps_font.render(fps_string, font_settings['aa'], get_color('fps_color'))
-	fps_location = [bx(10) - fps_render.get_width(), by(10) - fps_font.get_ascent()]
-	screen.blit(fps_render, fps_location)
+	draw_text(screen, 'fps: {}'.format(fps), bx(10), by(10), 'fps_font', 'right', 'baseline')
 
 """
 The current state's draw routine is called once per frame.
 """
-def draw_state_menu(screen, state):
-	draw_title(screen, settings['title'])
+last_frame_letter = 0
+def draw_state_intro(screen, since):
+	global last_frame_letter
 
-def draw_state_game(screen, state):
-	if state != 'play':
+	draw_text(screen, 'Intro', cx(), cy()/4, 'title_font', 'center')
+
+	text = """These are Triggers.
+A Trigger has a Warning and an Effect.
+The Effect happens ten seconds after the Warning.
+This time can not||| be changed.
+Time itself||| can||||||||| be changed."""
+
+	start_time = 0
+	end_time = 10
+	length = end_time - start_time
+	doneness = 1 - (length - since.total_seconds()) / length
+	letter = int(len(text) * max(min(doneness, 1), 0))
+
+	this_frame_text = text[last_frame_letter:letter]
+	if '|' in this_frame_text:
+		state.post_event('time change', frames=-1)
+
+	drawable_text = text[:letter].replace('|', '')
+	draw_text(screen, drawable_text, cx(), cy()/2, 'default_font', 'center')
+	last_frame_letter = letter
+
+def draw_state_menu(screen, since):
+	draw_text(screen, settings['title'], cx(), cy()/4, 'title_font', 'center')
+
+def draw_state_game(screen, since):
+	if state.state != 'play':
 		screen.fill(get_color('dark gray'))
 
 	draw_crosshairs(screen, tx(), ty(), 'medium gray', 4, 1)
 	draw_crosshairs(screen, cx(), cy(), 'medium gray', 2, 1)
 	draw_crosshairs(screen, bx(), by(), 'medium gray', 4, 1)
 
-	if state == 'pause': draw_title(screen, 'Paused')
-	if state == 'lose': draw_title(screen, 'You Lose')
-	if state == 'win': draw_title(screen, 'You Win')
+	if state.state == 'pause':
+		draw_text(screen, 'Pause', cx(), cy()/4, 'title_font', 'center')
+	if state.state == 'lose':
+		draw_text(screen, 'You Lose', cx(), cy()/4, 'title_font', 'center')
+	if state.state == 'win':
+		draw_text(screen, 'You Win!', cx(), cy()/4, 'title_font', 'center')
 
-def draw_state_credits(screen, state):
-	draw_title(screen, 'Credits')
+def draw_state_credits(screen, since):
+	draw_text(screen, 'Credits', cx(), cy()/4, 'title_font', 'center')
+	draw_text(screen, settings['credits'], cx(), cy()/2, 'default_font', 'center')
 
 """Connect state names and drawing functions. A drawing function may handle more than one state."""
 draw_state = {
-	'menu': draw_state_menu,
+	'menu': draw_state_intro,
 	'play': draw_state_game,
 	'pause': draw_state_game,
 	'win': draw_state_game,
