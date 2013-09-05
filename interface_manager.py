@@ -224,8 +224,7 @@ def start():
 		draw_state[state_manager.state]()
 		draw_fps()
 
-		# TODO: if mode includes double buffering
-		pygame.display.flip()  # required for double buffering
+		pygame.display.flip()
 
 	"""Exit cleanly."""
 	pygame.quit()

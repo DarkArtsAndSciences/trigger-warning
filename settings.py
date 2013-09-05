@@ -41,8 +41,8 @@ default = {  # default settings, overriden in init()
 	'panic color': 'rotate: red, cyan, yellow, magenta, green, blue',
 	'color rotation speed': 4,  # frames per color
 
-	'default font': {'name':None, 'scale':1.5, 'aa':True, 'color':'foreground color'},
-	'title font': {'name':None, 'scale':4},  # TODO: fancy font name
+	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
+	'title font': {'name':None, 'scale':4},
 }
 db = {}
 
