@@ -214,7 +214,7 @@ def start():
 	while state_manager.done == False:
 
 		"""Update time."""
-		time_manager.tick()
+		time_manager.tick(settings.get('frame rate'), state_manager.state)
 
 		"""Handle events."""
 		state_manager.handle_event_queue(time_manager.get_real_time())

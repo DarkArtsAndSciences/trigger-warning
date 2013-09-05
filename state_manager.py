@@ -1,6 +1,7 @@
 import platform
 import pygame
 
+import time_manager
 import utils  # log_function_call()
 
 """
@@ -129,6 +130,13 @@ add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE
 
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='pause')), 'play', pygame.K_p, command_key)  # pause -> press command-P during play
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='play')), 'pause', pygame.K_p, command_key)  # unpause -> press command-P while paused
+
+add_event_handler(lambda: time_manager.offset_time(-1), '', pygame.K_r)
+add_event_handler(time_manager.offset_time, '', event_type=get_event_id('time change'))
+
+add_event_handler(time_manager.pause_time, event_type=get_event_id('time pause'))
+add_event_handler(time_manager.unpause_time, event_type=get_event_id('time unpause'))
+
 
 """
 Game mechanics

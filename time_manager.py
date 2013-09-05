@@ -1,9 +1,6 @@
 import datetime
 import pygame.time
 
-import settings
-import state_manager
-
 """
 Time
 """
@@ -24,15 +21,15 @@ def get_real_since(): return get_real_time() - start_time
 def get_real_future_time(seconds):
 	return get_real_time() + datetime.timedelta(seconds=seconds)
 
-def tick():
-	clock.tick(settings.get('frame rate'))
+def tick(frame_rate, state):
+	clock.tick(frame_rate)
 
 	global current_time
 	last_time = current_time
 	current_time = datetime.datetime.now()
 	frame_time = 0 - (current_time - last_time).total_seconds()
 
-	if time_is_paused:
+	if time_is_paused or 'pause' in state:
 		offset_time(seconds=frame_time)
 	else:
 		global frame
@@ -52,20 +49,16 @@ def get_real_clock_string(): return get_delta_string(get_real_since())
 Editable time
 """
 
-def offset_time(seconds=0, frames=0):
+def offset_time(seconds=0):
 	global offset
 	offset += seconds
-	offset += float(frames)/settings.get('frame rate')
-state_manager.add_event_handler(lambda: offset_time(-1), '', pygame.K_r)
-state_manager.add_event_handler(offset_time, '', event_type=state_manager.get_event_id('time change'))
+	#offset += float(frames)/settings.get('frame rate')
 
 time_is_paused = False
-def pause_time(seconds=0, frames=0):
+def pause_time():
 	global time_is_paused
 	time_is_paused = True
-state_manager.add_event_handler(pause_time, event_type=state_manager.get_event_id('time pause'))
 def unpause_time():
 	global time_is_paused
 	time_is_paused = False
-state_manager.add_event_handler(unpause_time, event_type=state_manager.get_event_id('time unpause'))
 
