@@ -72,7 +72,7 @@ def draw_crosshairs(surface, x, y, color='white', size=1, width=1):
 def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', yalign='top', line_spacing=1.0, background_color=(0,0,0,0), limit=None):
 
 	fs = settings.get_font_settings(font_name)
-	font = pygame.font.Font(fs['name'], fs['size'])
+	font = pygame.font.SysFont(fs['name'], fs['size'])
 
 	lines = text.split('\n')
 	renders = [font.render(line, fs['aa'], settings.get_color(fs['color'])) for line in lines]
@@ -98,10 +98,10 @@ def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', 
 def draw_clock():
 	clock_string = time_manager.get_clock_string()
 	draw_text(window, clock_string, tx(10), by(30), 'clock font', 'left', 'baseline')
-	draw_text(window, 'game time', tx(10), by(25), 'default font', 'left', 'top')
+	draw_text(window, 'game time', tx(10), by(25), 'label font', 'left', 'top')
 	real_clock_string = time_manager.get_real_clock_string()
 	draw_text(window, real_clock_string, bx(10), by(30), 'clock font', 'right', 'baseline')
-	draw_text(window, 'real time', bx(10), by(25), 'default font', 'right', 'top')
+	draw_text(window, 'real time', bx(10), by(25), 'label font', 'right', 'top')
 
 def draw_fps():
 	fps = time_manager.clock.get_fps()
@@ -121,6 +121,9 @@ State draw routines
 
 The current state's draw routine is called once per frame.
 """
+
+def draw_state_menu():
+	draw_text(window, settings.get('title'), cx(), cy()/4, 'title font', 'center', 'baseline')
 
 last_frame_letter = 0
 intro_text = """These are Triggers.
@@ -162,14 +165,11 @@ def draw_state_intro():
 	surface = pygame.surface.Surface(settings.get('size'))
 	surface.set_alpha(255*fade(now, start_time, end_time, fade_time))
 	surface.set_colorkey((0,0,0))
-	draw_text(surface, drawable_text, cx(), cy()/2, xalign='center', line_spacing=1.5, limit=letter)
-	draw_text(surface, 'Intro', cx(), cy()/4, 'title font', 'center')
+	draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
+	draw_text(surface, 'Intro', cx(), cy()/4, 'title font', 'center', 'baseline')
 	window.blit(surface, (0, 0))
 
 	draw_clock()
-
-def draw_state_menu():
-	draw_text(window, settings.get('title'), cx(), cy()/4, 'title font', 'center')
 
 def draw_state_game():
 	draw_crosshairs(window, tx(), ty(), 'medium gray', 4, 1)
@@ -184,15 +184,15 @@ def draw_state_game():
 		window.blit(overlay, (0, 0))
 
 		if state_manager.state == 'pause':
-			draw_text(window, 'Pause', cx(), cy()/4, 'title font', 'center')
+			draw_text(window, 'Pause', cx(), cy()/4, 'title font', 'center', 'baseline')
 		if state_manager.state == 'lose':
-			draw_text(window, 'You Lose', cx(), cy()/4, 'title font', 'center')
+			draw_text(window, 'You Lose', cx(), cy()/4, 'title font', 'center', 'baseline')
 		if state_manager.state == 'win':
-			draw_text(window, 'You Win!', cx(), cy()/4, 'title font', 'center')
+			draw_text(window, 'You Win!', cx(), cy()/4, 'title font', 'center', 'baseline')
 
 def draw_state_credits():
-	draw_text(window, 'Credits', cx(), cy()/4, 'title font', 'center')
-	draw_text(window, settings['credits'], cx(), cy()/2, 'default font', 'center')
+	draw_text(window, 'Credits', cx(), cy()/4, 'title font', 'center', 'baseline')
+	draw_text(window, settings['credits'], cx(), cy()/2, 'intro font', 'center')
 
 """Connect state names and drawing functions. A drawing function may handle more than one state."""
 draw_state = {

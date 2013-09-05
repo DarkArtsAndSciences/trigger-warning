@@ -15,11 +15,13 @@ settings.init({
 	'dead trigger color': 'blue',
 	'warning color': 'red',
 
-	'clock font': {'scale':4},
-	'clock color': 'yellow',
+	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
+	'title font': {'name':'chalkduster', 'scale':4},
+	'intro font': {'name':'chalkduster', 'scale':1.5},
+	'clock font': {'name':'unispace', 'scale':2},
+	'fps font': {'name':'futura', 'scale':0.75},
+	'label font': {'name':'futura', 'scale':0.75}
 
-	'fps font': {'scale':1},
-	'fps color': 'yellow'
 })
 interface_manager.init()
 time_manager.start()
