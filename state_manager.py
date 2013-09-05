@@ -112,6 +112,10 @@ def change_state(new_state):
 	old_state = state
 	state = new_state
 	#print 'Changed from state {} to {}.'.format(old_state, state)
+
+	if state == 'intro':
+		time_manager.start()
+
 add_event_handler(change_state, event_type=EVENT_STATECHANGE)
 
 """

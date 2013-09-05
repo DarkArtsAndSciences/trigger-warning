@@ -38,8 +38,11 @@ def tick(frame_rate, state):
 def get_delta_string(timedelta=0):
 	total_seconds = timedelta.total_seconds()
 	clock_string = '-'*(total_seconds<0) + str(datetime.timedelta(seconds=abs(total_seconds)))
-	dot = clock_string.index('.')
-	if dot: clock_string = clock_string[:dot+2]
+	try:  # round seconds to tenths
+		dot = clock_string.index('.')
+		clock_string = clock_string[:dot+2]
+	except ValueError: pass
+
 	return clock_string
 
 def get_clock_string(): return get_delta_string(get_since())
