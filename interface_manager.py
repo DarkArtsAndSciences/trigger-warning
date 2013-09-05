@@ -69,13 +69,14 @@ def draw_crosshairs(surface, x, y, color='white', size=1, width=1):
 	pygame.draw.line(surface, settings.get_color(color), [x-size, y], [x+size, y], width)
 	pygame.draw.line(surface, settings.get_color(color), [x, y-size], [x, y+size], width)
 
-def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', yalign='top', line_spacing=1.0, background_color=(0,0,0,0)):
+def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', yalign='top', line_spacing=1.0, background_color=(0,0,0,0), limit=None):
 
 	fs = settings.get_font_settings(font_name)
 	font = pygame.font.Font(fs['name'], fs['size'])
 
 	lines = text.split('\n')
 	renders = [font.render(line, fs['aa'], settings.get_color(fs['color'])) for line in lines]
+	if limit: limited_renders = [font.render(line[:limit], fs['aa'], settings.get_color(fs['color'])) for line in lines]
 	width = max([r.get_width() for r in renders])
 	line_height = font.get_linesize() * line_spacing
 	height = line_height * len(lines)
@@ -85,7 +86,7 @@ def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', 
 	container.fill(background_color)
 
 	line_y = 0
-	for render in renders:
+	for i, render in enumerate(renders):
 		line_x = 0-get_text_x(container, 0, xalign)
 		location = [get_text_x(render, line_x, xalign), line_y]
 		container.blit(render, location)
@@ -94,13 +95,18 @@ def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', 
 	location = [get_text_x(container, x, xalign), get_text_y(renders[0], y, yalign, font)]
 	surface.blit(container, location)
 
-def draw_clock(since):
-	clock_string = time_manager.get_clock_string(since)
-	draw_text(window, clock_string, cx(), by(50), 'clock font', 'center', 'baseline')
+def draw_clock():
+	clock_string = time_manager.get_clock_string()
+	draw_text(window, clock_string, tx(10), by(30), 'clock font', 'left', 'baseline')
+	draw_text(window, 'game time', tx(10), by(25), 'default font', 'left', 'top')
+	real_clock_string = time_manager.get_real_clock_string()
+	draw_text(window, real_clock_string, bx(10), by(30), 'clock font', 'right', 'baseline')
+	draw_text(window, 'real time', bx(10), by(25), 'default font', 'right', 'top')
 
-def draw_fps(fps):
+def draw_fps():
+	fps = time_manager.clock.get_fps()
 	fps_string = 'fps: {}'.format(int(fps))
-	draw_text(window, fps_string, bx(10), by(10), 'fps font', 'right', 'baseline')
+	draw_text(window, fps_string, bx(10), ty(10), 'fps font', 'right', 'top')
 
 """
 State draw routines
@@ -109,44 +115,53 @@ The current state's draw routine is called once per frame.
 """
 
 last_frame_letter = 0
-def draw_state_intro(since):
-	global last_frame_letter
-
-	draw_text(window, 'Intro', cx(), cy()/4, 'title font', 'center')
-
-	text = """These are Triggers.
+intro_text = """These are Triggers.
 A Trigger has a Warning and an Effect.
 The Effect happens ten seconds after the Warning.
-This time can not| be changed.
-Time itself| can||| be changed."""
+This time can not be changed.
+Time itself |can not|<<<<|be changed."""
+def draw_state_intro():
+	global last_frame_letter, intro_text
+
+	draw_text(window, 'Intro', cx(), cy()/4, 'title font', 'center')
 
 	start_time = 0
 	end_time = 10
 	length = end_time - start_time
-	doneness = 1 - (length - since.total_seconds()) / length
-	letter = int(len(text) * max(min(doneness, 1), 0))
+	doneness = 1 - (length - time_manager.get_since().total_seconds()) / length
+	letter = int(len(intro_text) * max(min(doneness, 1), 0))
 
-	this_frame_text = text[last_frame_letter:letter]
+	this_frame_text = intro_text[last_frame_letter:letter]
+
 	if '|' in this_frame_text:
-		state_manager.post_event('time pause', seconds=-1)
-		# TODO: is this working?
+		state_manager.post_event('time pause')
+		state_manager.delay_event('time unpause', time_manager.get_real_future_time(this_frame_text.count('|')))
 
-	drawable_text = text[:letter].replace('|', '')
-	draw_text(window, drawable_text, cx(), cy()/2, 'default font', 'center')
+	if '<' in this_frame_text:
+		"""Remove each < and the letter before it."""
+		for i in xrange(this_frame_text.count('<')):
+			where = intro_text.find('<')
+			first = intro_text[:where-1]
+			second = intro_text[where+1:]
+			letter -= 2
+			intro_text = first + second
+
+	drawable_text = intro_text[:letter]
+	drawable_text = drawable_text.replace('|','').replace('<','')
+	draw_text(window, drawable_text, cx(), cy()/2, xalign='center', line_spacing=1.5, limit=letter)
 	last_frame_letter = letter
 
-	draw_crosshairs(window, cx(), cy(), 'pulse color', 2, 1)
+	draw_clock()
 
-def draw_state_menu(since):
+def draw_state_menu():
 	draw_text(window, settings.get('title'), cx(), cy()/4, 'title font', 'center')
 
-def draw_state_game(since):
+def draw_state_game():
 	draw_crosshairs(window, tx(), ty(), 'medium gray', 4, 1)
 	draw_crosshairs(window, cx(), cy(), 'pulse color', 2, 1)
 	draw_crosshairs(window, bx(), by(), 'medium gray', 4, 1)
 
-	draw_clock(since)
-	# TODO: draw_clock(since_raw)
+	draw_clock()
 
 	if state_manager.state != 'play':
 		overlay = pygame.surface.Surface(settings.get('size'), pygame.SRCALPHA)
@@ -160,14 +175,14 @@ def draw_state_game(since):
 		if state_manager.state == 'win':
 			draw_text(window, 'You Win!', cx(), cy()/4, 'title font', 'center')
 
-def draw_state_credits(since):
+def draw_state_credits():
 	draw_text(window, 'Credits', cx(), cy()/4, 'title font', 'center')
 	draw_text(window, settings['credits'], cx(), cy()/2, 'default font', 'center')
 
 """Connect state names and drawing functions. A drawing function may handle more than one state."""
 draw_state = {
 	'menu': draw_state_menu,
-	'play': draw_state_game,
+	'play': draw_state_intro,
 	'pause': draw_state_game,
 	'win': draw_state_game,
 	'lose': draw_state_game,
@@ -184,16 +199,14 @@ def start():
 
 		"""Update time."""
 		time_manager.tick()
-		since = time_manager.get_since()
-		fps = time_manager.clock.get_fps()
 
 		"""Handle events."""
-		state_manager.handle_event_queue(since)
+		state_manager.handle_event_queue(time_manager.get_real_time())
 
 		"""Redraw window."""
 		window.fill(settings.get_color('background color'))
-		draw_state[state_manager.state](since)
-		draw_fps(fps)
+		draw_state[state_manager.state]()
+		draw_fps()
 
 		# TODO: if mode includes double buffering
 		pygame.display.flip()  # required for double buffering

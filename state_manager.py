@@ -9,13 +9,18 @@ Custom event types
 
 EVENT_STATECHANGE = pygame.USEREVENT + 1
 EVENT_TIMECHANGE = pygame.USEREVENT + 2
-EVENT_TIMEPAUSE = pygame.USEREVENT + 2
+EVENT_TIMEPAUSE = pygame.USEREVENT + 3
+EVENT_TIMEUNPAUSE = pygame.USEREVENT + 4
 
 event_types = {
 	'state change': EVENT_STATECHANGE,
 	'time change': EVENT_TIMECHANGE,
-	'time pause': EVENT_TIMEPAUSE
+	'time pause': EVENT_TIMEPAUSE,
+	'time unpause': EVENT_TIMEUNPAUSE
 }
+
+def get_event_id(name):
+	return event_types[name]
 
 """
 Event posting
@@ -27,10 +32,10 @@ def post_event(event, **kwargs):
 	else:
 		e = pygame.event.Event(event_types[str(event)], kwargs)
 	pygame.event.post(e)
+	#utils.log_function_call(e)
 
 delayed_events = []
-def delay_event(event, seconds=0, frames=0, **kwargs):
-	when = get_time_offset(seconds, frames)
+def delay_event(event, when, **kwargs):
 	delayed_events.append((when, event, kwargs))
 
 """
@@ -64,7 +69,7 @@ def keyboard_shortcut(shortcut_up_or_down, shortcut_key, shortcut_mod):
 			#utils.log_function_call()
 			h()
 
-def handle_event_queue(since):
+def handle_event_queue(now):
 	"""Call handlers for the events in the pygame event queue."""
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -81,9 +86,11 @@ def handle_event_queue(since):
 			print 'Ignored event {}'.format(event)
 
 	"""Post any delayed events whose time is up."""
-	for when, event, kwargs in delayed_events:
-		if when >= since:
+	for i, (when, event, kwargs) in enumerate(delayed_events):
+		if now >= when:
 			post_event(event, **kwargs)
+			del delayed_events[i]
+
 
 """Quit handler."""
 done = False  # exit flag for game loop
