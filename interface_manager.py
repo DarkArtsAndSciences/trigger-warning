@@ -108,6 +108,14 @@ def draw_fps():
 	fps_string = 'fps: {}'.format(int(fps))
 	draw_text(window, fps_string, bx(10), ty(10), 'fps font', 'right', 'top')
 
+# alpha multiplier, 0.0 < fade < 1.0
+def fade(now, start_time, end_time=None, length=10):
+	if not end_time: end_time = start_time
+	if now < start_time: return 0
+	if now < end_time: return 1
+	if now > end_time + length: return 0
+	return 1 - (now-end_time)/length
+
 """
 State draw routines
 
@@ -122,16 +130,17 @@ This time can not be changed.
 Time itself |can not|<<<<|be changed."""
 def draw_state_intro():
 	global last_frame_letter, intro_text
-
-	draw_text(window, 'Intro', cx(), cy()/4, 'title font', 'center')
-
+	now = time_manager.get_since().total_seconds()
 	start_time = 0
 	end_time = 10
+	fade_time = 5
 	length = end_time - start_time
-	doneness = 1 - (length - time_manager.get_since().total_seconds()) / length
+	doneness = 1 - (length - now) / length
 	letter = int(len(intro_text) * max(min(doneness, 1), 0))
-
 	this_frame_text = intro_text[last_frame_letter:letter]
+
+	if now > start_time + end_time + fade_time:
+		state_manager.post_event('state change', new_state='play')
 
 	if '|' in this_frame_text:
 		state_manager.post_event('time pause')
@@ -148,8 +157,14 @@ def draw_state_intro():
 
 	drawable_text = intro_text[:letter]
 	drawable_text = drawable_text.replace('|','').replace('<','')
-	draw_text(window, drawable_text, cx(), cy()/2, xalign='center', line_spacing=1.5, limit=letter)
 	last_frame_letter = letter
+
+	surface = pygame.surface.Surface(settings.get('size'))
+	surface.set_alpha(255*fade(now, start_time, end_time, fade_time))
+	surface.set_colorkey((0,0,0))
+	draw_text(surface, drawable_text, cx(), cy()/2, xalign='center', line_spacing=1.5, limit=letter)
+	draw_text(surface, 'Intro', cx(), cy()/4, 'title font', 'center')
+	window.blit(surface, (0, 0))
 
 	draw_clock()
 
@@ -182,7 +197,8 @@ def draw_state_credits():
 """Connect state names and drawing functions. A drawing function may handle more than one state."""
 draw_state = {
 	'menu': draw_state_menu,
-	'play': draw_state_intro,
+	'intro': draw_state_intro,
+	'play': draw_state_game,
 	'pause': draw_state_game,
 	'win': draw_state_game,
 	'lose': draw_state_game,

@@ -48,6 +48,7 @@ def add_event_handler(handler, state='', shortcut_key=None, shortcut_mod=pygame.
 	"""Register a function to handle events and/or keyboard shortcuts.
 	User event handlers should have an 'event' parameter.
 	Other event handlers should have no required parameters.
+	TODO: add kwargs and pass them on to events
 	"""
 	event_handlers.append((handler, event_type, state, shortcut_key, shortcut_mod, shortcut_up_or_down))
 
@@ -116,7 +117,8 @@ add_event_handler(change_state, event_type=EVENT_STATECHANGE)
 State transition events
 """
 
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='play')), 'menu', pygame.K_SPACE)  # start game -> press SPACE on main menu
+#add_event_handler(time_manager.start, 'menu', pygame.K_SPACE)
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='intro')), 'menu', pygame.K_SPACE)  # start game -> press SPACE on main menu
 
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='menu')), 'play', pygame.K_ESCAPE)  # end game (menu) -> press ESC during play
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='lose')), 'play', pygame.K_l)  # end game (lose) -> press L during play
