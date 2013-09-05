@@ -6,17 +6,21 @@ import utils  # log_function_call()
 """
 Custom event types
 """
+
 EVENT_STATECHANGE = pygame.USEREVENT + 1
 EVENT_TIMECHANGE = pygame.USEREVENT + 2
+EVENT_TIMEPAUSE = pygame.USEREVENT + 2
 
 event_types = {
 	'state change': EVENT_STATECHANGE,
-	'time change': EVENT_TIMECHANGE
+	'time change': EVENT_TIMECHANGE,
+	'time pause': EVENT_TIMEPAUSE
 }
 
 """
 Event posting
 """
+
 def post_event(event, **kwargs):
 	if isinstance(event, int) and pygame.NOEVENT < int(event) < pygame.NUMEVENTS:
 		e = pygame.event.Event(event, kwargs)
@@ -24,9 +28,15 @@ def post_event(event, **kwargs):
 		e = pygame.event.Event(event_types[str(event)], kwargs)
 	pygame.event.post(e)
 
+delayed_events = []
+def delay_event(event, seconds=0, frames=0, **kwargs):
+	when = get_time_offset(seconds, frames)
+	delayed_events.append((when, event, kwargs))
+
 """
 Event handlers
 """
+
 event_handlers = []
 
 def add_event_handler(handler, state='', shortcut_key=None, shortcut_mod=pygame.KMOD_NONE, shortcut_up_or_down=pygame.KEYDOWN, event_type=None):
@@ -54,8 +64,8 @@ def keyboard_shortcut(shortcut_up_or_down, shortcut_key, shortcut_mod):
 			#utils.log_function_call()
 			h()
 
-def handle_event_queue():
-	"""Call handlers for the events in the queue."""
+def handle_event_queue(since):
+	"""Call handlers for the events in the pygame event queue."""
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			quit()
@@ -70,6 +80,11 @@ def handle_event_queue():
 		else:
 			print 'Ignored event {}'.format(event)
 
+	"""Post any delayed events whose time is up."""
+	for when, event, kwargs in delayed_events:
+		if when >= since:
+			post_event(event, **kwargs)
+
 """Quit handler."""
 done = False  # exit flag for game loop
 def quit():
@@ -80,7 +95,9 @@ add_event_handler(quit, shortcut_key=pygame.K_q, shortcut_mod=command_key, event
 """
 States
 """
+
 state = 'menu'  # TODO: start with loading screen
+
 def change_state(new_state):
 	global state
 	old_state = state
@@ -88,15 +105,26 @@ def change_state(new_state):
 	#print 'Changed from state {} to {}.'.format(old_state, state)
 add_event_handler(change_state, event_type=EVENT_STATECHANGE)
 
-"""State transition events."""
+"""
+State transition events
+"""
+
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='play')), 'menu', pygame.K_SPACE)  # start game -> press SPACE on main menu
 
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='menu')), 'play', pygame.K_ESCAPE)  # end game (menu) -> press ESC during play
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='lose')), 'play', pygame.K_l)  # end game (lose) -> press L during play
 add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='win')), 'play', pygame.K_w)  # end game (win) -> press W during play
 
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='menu')), 'lose', pygame.K_ESCAPE)  # return to menu -> press ESC on lose screen
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='menu')), 'win', pygame.K_ESCAPE)  # return to menu -> press ESC on win screen
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='menu')), 'lose', pygame.K_ESCAPE)  # return to menu -> press ESC on lose screen
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='menu')), 'win', pygame.K_ESCAPE)  # return to menu -> press ESC on win screen
 
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='pause')), 'play', pygame.K_p, command_key)  # pause -> press command-P during play
-add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, state='play')), 'pause', pygame.K_p, command_key)  # unpause -> press command-P while paused
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='pause')), 'play', pygame.K_p, command_key)  # pause -> press command-P during play
+add_event_handler(lambda: pygame.event.post(pygame.event.Event(EVENT_STATECHANGE, new_state='play')), 'pause', pygame.K_p, command_key)  # unpause -> press command-P while paused
+
+"""
+Game mechanics
+"""
+
+def fire():
+	print 'fire'
+add_event_handler(fire, 'play', pygame.K_SPACE)
