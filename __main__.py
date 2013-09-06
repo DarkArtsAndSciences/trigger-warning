@@ -15,11 +15,12 @@ settings.init({
 	'live trigger color': 'green',
 	'dead trigger color': 'blue',
 	'warning color': 'red',
+	'chalk color': [255,250,205],
 
 	"""Fonts: Futura, Unispace, Chalkduster"""
 	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
-	'title font': {'name':'chalkduster', 'scale':3.5},
-	'intro font': {'name':'rabiohead', 'scale':2.5},
+	'title font': {'name':'chalkduster', 'scale':3.5, 'color':'chalk color'},
+	'intro font': {'name':'rabiohead', 'scale':2.5, 'color':'chalk color'},
 	'clock font': {'name':'unispace', 'scale':2},
 	'warning title font': {'name':'chalkduster', 'scale':3, 'color':'rotate: red, red, red, magenta, red, red, red, magenta, white, magenta'},
 	'warning text font': {'name':'rabiohead', 'scale':2, 'color':'red'},
