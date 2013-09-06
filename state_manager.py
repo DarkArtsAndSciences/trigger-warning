@@ -68,7 +68,7 @@ def keyboard_shortcut(shortcut_up_or_down, shortcut_key, shortcut_mod):
 			#utils.log_function_call()
 			h(**kwargs)
 
-def handle_event_queue(now):
+def handle_event_queue(current_context):
 	"""Call handlers for the events in the pygame event queue."""
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -86,7 +86,7 @@ def handle_event_queue(now):
 
 	"""Post any delayed events whose time is up."""
 	for i, (when, event, kwargs) in enumerate(delayed_events):
-		if now >= when:
+		if current_context['real now'] >= when:
 			post_event(event, **kwargs)
 			del delayed_events[i]
 

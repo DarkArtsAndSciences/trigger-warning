@@ -15,11 +15,21 @@ def start():
 	offset = 0
 
 def get_time(): return current_time + datetime.timedelta(seconds=offset)
+def get_time_plus_ten(): return get_time() + datetime.timedelta(seconds=10)
 def get_real_time(): return current_time
 def get_since(): return get_time() - start_time
 def get_real_since(): return get_real_time() - start_time
 def get_real_future_time(seconds):
 	return get_real_time() + datetime.timedelta(seconds=seconds)
+
+def get_time_context():
+	return {
+		'now': get_time(),
+		'now+10': get_time_plus_ten(),
+		'real now': get_real_time(),
+		'since': get_since(),
+		'real since': get_real_since()
+	}
 
 def tick(frame_rate, state):
 	clock.tick(frame_rate)

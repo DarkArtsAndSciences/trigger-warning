@@ -4,6 +4,7 @@ pygame.init()
 import settings
 import state_manager
 import time_manager
+import trigger_manager
 
 """
 Application window
@@ -216,8 +217,12 @@ def start():
 		"""Update time."""
 		time_manager.tick(settings.get('frame rate'), state_manager.state)
 
+		"""Create context."""
+		current_context = time_manager.get_time_context()
+
 		"""Handle events."""
-		state_manager.handle_event_queue(time_manager.get_real_time())
+		state_manager.handle_event_queue(current_context)
+		trigger_manager.handle_triggers(current_context)
 
 		"""Redraw window."""
 		window.fill(settings.get_color('background color'))
