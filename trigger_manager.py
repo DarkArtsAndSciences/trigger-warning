@@ -1,4 +1,6 @@
+import settings
 import state_manager
+import time_manager
 import utils
 
 """Warnings
@@ -17,6 +19,8 @@ def warn(wid, current_context, **kwargs):
 	title, text, func, default_kwargs = warnings[wid]
 
 	warning_queue.append((title, text, current_context['since']))
+
+	if not func: return
 
 	if kwargs and not default_kwargs:
 		func(current_context=current_context, **kwargs)
@@ -94,7 +98,7 @@ how: FUNCTION TO ADD TO THIS BOID'S PHYSICS
 """
 
 triggers = {}
-def define_trigger(tid, wid, eid, context=None):
+def define_trigger(tid, wid, eid, context):
 	triggers[tid] = (wid, eid, context)
 
 def is_same_context(context, current_context):
@@ -105,7 +109,7 @@ def is_same_context(context, current_context):
 	context:
 		when:
 			if int: time to go live; match if since >= when
-			if string: special cases
+			if string: special cases: 'inf', ..?
 
 	current_context:
 		from settings:
@@ -135,24 +139,45 @@ def is_same_context(context, current_context):
 def handle_triggers(current_context):
 	for tid in triggers.copy():
 		wid, eid, context = triggers[tid]
+
 		if is_same_context(context, current_context):
 			warn(wid, current_context)
 			add_effect(eid, current_context['now+10'])
-			del triggers[tid] # TODO: repeating triggers
+
+			if not 'repeat' in context:
+				del triggers[tid]
+
+			else:
+				if isinstance(context['repeat'], int):
+					context['repeat'] -= 1
+					if context['repeat'] <= 0:
+						del triggers[tid]
+
+				context['when'] = time_manager.plus(current_context['now'], context['delay'])  # Crash? You forgot to set a delay in define_trigger(context{HERE}). Don't just set it to zero unless you really want it to be called every frame.
 
 def init():
 	def start_warning(**kwargs):
-		print 'start warning: {}'.format(kwargs)
+		print 'start warning'
 		# TODO: generate boids here
 	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\nYou have now been warned.', start_warning)
 
 	def start_effect(**kwargs):
-		print 'start effect: {}'.format(kwargs)
+		print 'start effect'
 		# TODO: level 1's triggers go live here
 	define_effect('start effect', start_effect)
 
+	def test_warning(**kwargs):
+		settings.set('foreground color', 'yellow')
+	define_warning('test warning', 'Test Warning', 'This is only a test.', test_warning)
+
+	def test_effect(**kwargs):
+		settings.set('foreground color', 'green')
+	define_effect('test effect', test_effect)
+
 def start(current_context):
-	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now+10']})
+	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now']})
+
+	define_trigger('test trigger', 'test warning', 'test effect', {'when':time_manager.plus(current_context['now'], 15), 'repeat':3, 'delay':12})
 
 def tick(current_context):
 	handle_triggers(current_context)
