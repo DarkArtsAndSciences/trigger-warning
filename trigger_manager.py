@@ -46,12 +46,17 @@ effect_queue = []
 def add_effect(eid, when):
 	effect_queue.append((eid, when))
 
-#def is_effective(eid, now):
-#	return now >= effect_queue[eid][0]
+#def is_effective(eid, current_context):
+#	return current_context['now'] >= effect_queue[eid][0]
 
 def affect(eid):
 	event, kwargs = effects[eid]
 	event(**kwargs)
+
+def handle_effects(current_context):
+	for eid, when in effect_queue:
+		if current_context['now'] >= when:
+			affect(eid)
 
 """Triggers
 
@@ -85,15 +90,48 @@ triggers = {}
 def define_trigger(tid, wid, eid, context=None):
 	triggers[tid] = (wid, eid, context)
 
-def fire(tid):
-	wid, eid, context = triggers[tid]
-	warn(wid)
-	add_effect(eid, 10)  # TODO: since + 10s
+def is_same_context(context, current_context):
+	"""Return true if current_context meets the conditions defined in context.
 
-def handle_triggers():
-	for tid in triggers:
-		# if context matches
-		fire(tid)
+	The two contexts are both dicts, but have different keys. Be careful with the order of arguments: the first one is the ideal conditions (from the trigger) and the second is the actual conditions (from the game state).
+
+	context:
+		when:
+			if int: time to go live; match if since >= when
+			if string: special cases
+
+	current_context:
+		from settings:
+			?
+		from interface_manager:
+			?
+		from state_manager:
+			state
+		from time_manager:
+			now, real_now, since, real_since
+			now+10: now + 10 seconds
+				If the caller builds this, this module doesn't need to import datetime. Use total_seconds() to force a datetime back to seconds.
+		from pygame:
+			mouse location
+			mouse up/down
+			keys currently down
+	"""
+
+	"""Return true if time is up (now >= when)."""
+	if 'when' in context and 'now' in current_context:
+		if context['when'] <= current_context['now']:
+			return True
+
+	"""If nothing matched, return False."""
+	return False
+
+def handle_triggers(current_context):
+	for tid in triggers.copy():
+		wid, eid, context = triggers[tid]
+		if is_same_context(context, current_context):
+			warn(wid)
+			add_effect(eid, current_context['now+10'])
+			del triggers[tid] # TODO: repeating triggers
 
 """Self Test"""
 
@@ -107,9 +145,7 @@ if __name__ == '__main__':
 		print 'start game'
 	define_effect('start effect', start_effect)
 
-	define_trigger('start trigger', 'start warning', 'start effect')
+	define_trigger('start trigger', 'start warning', 'start effect', {'when':2})
 
-	print '-'*8
-	handle_triggers()
-
-	# TODO: handle_effects(11) to see start_effect()
+	handle_triggers({'now':2, 'now+10':12})
+	handle_effects({'now':12, 'now+10':22})
