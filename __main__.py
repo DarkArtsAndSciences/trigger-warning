@@ -2,6 +2,7 @@ import settings
 import interface_manager
 import state_manager
 import time_manager
+import trigger_manager
 import utils
 
 settings.init({
@@ -17,13 +18,17 @@ settings.init({
 
 	"""Fonts: Futura, Unispace, Chalkduster"""
 	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
-	'title font': {'name':'chalkduster', 'scale':4},
-	'intro font': {'name':'chalkduster', 'scale':1.5},
+	'title font': {'name':'chalkduster', 'scale':3.5},
+	'intro font': {'name':'rabiohead', 'scale':2.5},
 	'clock font': {'name':'unispace', 'scale':2},
-	'fps font': {'name':'futura', 'scale':0.75},
+	'warning title font': {'name':'chalkduster', 'scale':3, 'color':'rotate: red, red, red, magenta, red, red, red, magenta, white, magenta'},
+	'warning text font': {'name':'rabiohead', 'scale':2, 'color':'red'},
+	'fps font': {'name':'futura', 'scale':0.85, 'color':'light gray'},
 	'label font': {'name':'futura', 'scale':0.75}
 
 })
+time_manager.init()
+trigger_manager.init()
 interface_manager.init()
-time_manager.start()
-interface_manager.start()
+
+interface_manager.loop()

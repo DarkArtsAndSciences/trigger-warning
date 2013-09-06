@@ -1,3 +1,4 @@
+import state_manager
 import utils
 
 """Warnings
@@ -11,23 +12,28 @@ warnings = {}
 def define_warning(wid, title, text, func, **kwargs):
 	warnings[wid] = (title, text, func, kwargs)
 
-def warn(wid, **kwargs):
+warning_queue = []
+def warn(wid, current_context, **kwargs):
 	title, text, func, default_kwargs = warnings[wid]
 
-	# TODO: pass to queue in interface_manager to draw/fadeout in draw_state()
-	print title
-	print text
+	warning_queue.append((title, text, current_context['since']))
 
 	if kwargs and not default_kwargs:
-		func(**kwargs)
+		func(current_context=current_context, **kwargs)
 	elif default_kwargs and not kwargs:
-		func(**default_kwargs)
-	elif default_wargs and kwargs:
+		func(current_context=current_context, **default_kwargs)
+	elif default_kwargs and kwargs:
 		combined_kwargs = default_kwargs.copy()
 		combined_kwargs.update(kwargs)
-		func(**combined_kwargs)
+		func(current_context=current_context, **combined_kwargs)
 	else:
-		func()
+		func(current_context=current_context)
+
+#def handle_warnings(current_context):
+#	"""Delete any expired warnings."""
+#	for qid, (title, text, when) in enumerate(warning_queue):
+#		if when <= current_context['now+10']:
+#			del warning_queue[qid]
 
 """Effects
 
@@ -49,14 +55,15 @@ def add_effect(eid, when):
 #def is_effective(eid, current_context):
 #	return current_context['now'] >= effect_queue[eid][0]
 
-def affect(eid):
+def affect(eid, current_context):
 	event, kwargs = effects[eid]
-	event(**kwargs)
+	event(current_context=current_context, **kwargs)
 
 def handle_effects(current_context):
-	for eid, when in effect_queue:
+	for qid, (eid, when) in enumerate(effect_queue):
 		if current_context['now'] >= when:
-			affect(eid)
+			affect(eid, current_context)
+			del effect_queue[qid]  # queue item, not definition
 
 """Triggers
 
@@ -129,19 +136,39 @@ def handle_triggers(current_context):
 	for tid in triggers.copy():
 		wid, eid, context = triggers[tid]
 		if is_same_context(context, current_context):
-			warn(wid)
+			warn(wid, current_context)
 			add_effect(eid, current_context['now+10'])
 			del triggers[tid] # TODO: repeating triggers
+
+def init():
+	def start_warning(**kwargs):
+		print 'start warning: {}'.format(kwargs)
+		# TODO: generate boids here
+	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\nYou have now been warned.', start_warning)
+
+	def start_effect(**kwargs):
+		print 'start effect: {}'.format(kwargs)
+		# TODO: level 1's triggers go live here
+	define_effect('start effect', start_effect)
+
+def start(current_context):
+	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now+10']})
+
+def tick(current_context):
+	handle_triggers(current_context)
+	#handle_warnings(current_context)
+	handle_effects(current_context)
 
 """Self Test"""
 
 if __name__ == '__main__':
 
-	def fade_warning(seconds):
-		print 'Fade out warning text over {} seconds. Set a flag and let interface.draw_state() deal with it. Countdown the seconds by changing warning.text?'.format(seconds)
+	def fade_warning(**kwargs):
+		print kwargs
+		print "Fade out warning text over {seconds} seconds, ending at {current_context[now+10]}s. Set a flag and let interface.draw_state() deal with it. Countdown the seconds by changing warning.text?".format(**kwargs)
 	define_warning('start warning', 'Warning', 'The game will start in ten seconds.', fade_warning, seconds=10)
 
-	def start_effect():
+	def start_effect(**kwargs):
 		print 'start game'
 	define_effect('start effect', start_effect)
 

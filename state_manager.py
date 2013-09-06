@@ -2,6 +2,7 @@ import platform
 import pygame
 
 import time_manager
+import trigger_manager
 import utils  # log_function_call()
 
 """
@@ -106,12 +107,19 @@ state = 'menu'
 
 def change_state(new_state):
 	global state
-	old_state = state
-	state = new_state
-	#print 'Changed from state {} to {}.'.format(old_state, state)
+	if state == new_state: return  # already in this state
 
-	if state == 'intro':
+	old_state = state
+	#print 'Changed from state {} to {}.'.format(old_state, new_state)
+
+	if new_state == 'intro':
 		time_manager.start()
+
+	if new_state == 'play':
+		current_context = time_manager.get_time_context()
+		trigger_manager.start(current_context)
+
+	state = new_state
 
 add_event_handler(change_state, event_type=get_event_id('state change'))
 

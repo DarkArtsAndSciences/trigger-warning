@@ -7,20 +7,25 @@ Time
 
 clock = pygame.time.Clock()
 
-def start():
+def init():
 	global start_time, current_time, frame, offset
 	start_time = datetime.datetime.now()
 	current_time = start_time
 	frame = 0
 	offset = 0
 
+def start():
+	init()  # reset all variables to zero/now
+
 def get_time(): return current_time + datetime.timedelta(seconds=offset)
 def get_time_plus_ten(): return get_time() + datetime.timedelta(seconds=10)
 def get_real_time(): return current_time
-def get_since(): return get_time() - start_time
-def get_real_since(): return get_real_time() - start_time
 def get_real_future_time(seconds):
 	return get_real_time() + datetime.timedelta(seconds=seconds)
+def plus_ten(when): return when + datetime.timedelta(seconds=10)
+
+def get_since(): return get_time() - start_time
+def get_real_since(): return get_real_time() - start_time
 
 def get_time_context():
 	return {

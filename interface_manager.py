@@ -5,6 +5,7 @@ import settings
 import state_manager
 import time_manager
 import trigger_manager
+import utils
 
 """
 Application window
@@ -124,7 +125,7 @@ The current state's draw routine is called once per frame.
 """
 
 def draw_state_menu():
-	draw_text(window, settings.get('title'), cx(), cy()/4, 'title font', 'center', 'baseline')
+	draw_text(window, settings.get('title'), cx(), cy()/3, 'title font', 'center', 'baseline')
 
 last_frame_letter = 0
 intro_text = """These are Triggers.
@@ -136,8 +137,8 @@ def draw_state_intro():
 	global last_frame_letter, intro_text
 	now = time_manager.get_since().total_seconds()
 	start_time = 0
-	end_time = 10
-	fade_time = 5
+	end_time = 8
+	fade_time = 2
 	length = end_time - start_time
 	doneness = 1 - (length - now) / length
 	letter = int(len(intro_text) * max(min(doneness, 1), 0))
@@ -167,7 +168,7 @@ def draw_state_intro():
 	surface.set_alpha(255*fade(now, start_time, end_time, fade_time))
 	surface.set_colorkey((0,0,0))
 	draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
-	draw_text(surface, 'Intro', cx(), cy()/4, 'title font', 'center', 'baseline')
+	draw_text(surface, 'Intro', cx(), cy()/3, 'title font', 'center', 'baseline')
 	window.blit(surface, (0, 0))
 
 	draw_clock()
@@ -177,6 +178,17 @@ def draw_state_game():
 	draw_crosshairs(window, cx(), cy(), 'pulse color', 2, 1)
 	draw_crosshairs(window, bx(), by(), 'medium gray', 4, 1)
 
+	for title, text, when in trigger_manager.warning_queue:
+		current_context = time_manager.get_time_context()
+		alpha = fade(current_context['since'].total_seconds(), when.total_seconds())
+		if alpha > 0.0:
+			surface = pygame.surface.Surface(settings.get('size'))
+			surface.set_alpha(255*alpha)
+			surface.set_colorkey((0,0,0))
+			draw_text(surface, title, cx(), cy()/3, 'warning title font', 'center', 'baseline')
+			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
+			window.blit(surface, (0, 0))
+
 	draw_clock()
 
 	if state_manager.state != 'play':
@@ -185,14 +197,14 @@ def draw_state_game():
 		window.blit(overlay, (0, 0))
 
 		if state_manager.state == 'pause':
-			draw_text(window, 'Pause', cx(), cy()/4, 'title font', 'center', 'baseline')
+			draw_text(window, 'Pause', cx(), cy()/3, 'title font', 'center', 'baseline')
 		if state_manager.state == 'lose':
-			draw_text(window, 'You Lose', cx(), cy()/4, 'title font', 'center', 'baseline')
+			draw_text(window, 'You Lose', cx(), cy()/3, 'title font', 'center', 'baseline')
 		if state_manager.state == 'win':
-			draw_text(window, 'You Win!', cx(), cy()/4, 'title font', 'center', 'baseline')
+			draw_text(window, 'You Win!', cx(), cy()/3, 'title font', 'center', 'baseline')
 
 def draw_state_credits():
-	draw_text(window, 'Credits', cx(), cy()/4, 'title font', 'center', 'baseline')
+	draw_text(window, 'Credits', cx(), cy()/3, 'title font', 'center', 'baseline')
 	draw_text(window, settings['credits'], cx(), cy()/2, 'intro font', 'center')
 
 """Connect state names and drawing functions. A drawing function may handle more than one state."""
@@ -209,7 +221,7 @@ draw_state = {
 """
 Main game loop, called once per frame
 """
-def start():
+def loop():
 
 	"""Loop until application exit."""
 	while state_manager.done == False:
@@ -222,7 +234,7 @@ def start():
 
 		"""Handle events."""
 		state_manager.handle_event_queue(current_context)
-		trigger_manager.handle_triggers(current_context)
+		trigger_manager.tick(current_context)
 
 		"""Redraw window."""
 		window.fill(settings.get_color('background color'))
