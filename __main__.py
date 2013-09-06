@@ -15,6 +15,7 @@ settings.init({
 	'dead trigger color': 'blue',
 	'warning color': 'red',
 
+	"""Fonts: Futura, Unispace, Chalkduster"""
 	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
 	'title font': {'name':'chalkduster', 'scale':4},
 	'intro font': {'name':'chalkduster', 'scale':1.5},
