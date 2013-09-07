@@ -120,17 +120,17 @@ def get_font_size(scale=1): return int(int(1+settings.get('size')[1]/40)*scale) 
 Text alignment
 """
 
-def get_text_x(render, x, align):
+def get_text_x(width, x, align):
 	if align == 'left':   return x
-	if align == 'center': return x - render.get_width()/2
-	if align == 'right':  return x - render.get_width()
+	if align == 'center': return x - width/2
+	if align == 'right':  return x - width
 
-def get_text_y(render, y, align, font=None):
-	"""Font is only required for 'baseline' alignment."""
+def get_text_y(height, y, align, ascent=None):
+	"""Font ascent is only required for 'baseline' alignment."""
 	if align == 'top':    return y
-	if align == 'center': return y - render.get_height()/2
-	if align == 'baseline':  return y - font.get_ascent()
-	if align == 'bottom':  return y - render.get_height()
+	if align == 'center': return y - height/2
+	if align == 'baseline':  return y - ascent
+	if align == 'bottom':  return y - height
 
 """
 Drawing utilities
@@ -152,19 +152,16 @@ def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', 
 	line_height = font.get_linesize() * line_spacing
 	height = line_height * len(lines)
 
-	"""Create a container surface filled with the RGBA value in background_color (default: transparent)."""
-	container = pygame.surface.Surface((width, height), pygame.SRCALPHA)
-	container.fill(background_color)
+	xpos = get_text_x(width, x, xalign)
+	ypos = get_text_y(renders[0].get_height(), y, yalign, font.get_ascent())
+	container = surface.subsurface(xpos, ypos, width, height)
 
 	line_y = 0
 	for i, render in enumerate(renders):
-		line_x = 0-get_text_x(container, 0, xalign)
-		location = [get_text_x(render, line_x, xalign), line_y]
+		line_x = 0-get_text_x(container.get_width(), 0, xalign)
+		location = [get_text_x(render.get_width(), line_x, xalign), line_y]
 		container.blit(render, location)
 		line_y += line_height
-
-	location = [get_text_x(container, x, xalign), get_text_y(renders[0], y, yalign, font)]
-	surface.blit(container, location)
 
 def draw_clock():
 	clock_string = time_manager.get_clock_string()
