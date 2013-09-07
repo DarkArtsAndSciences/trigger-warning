@@ -6,6 +6,7 @@ import utils
 
 def init():
 	settings.set('collision trigger size', 20)
+	settings.set('number of boids', 20)
 
 	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', boids.add_boids, num_boids=settings.get('number of boids'))
 
@@ -61,12 +62,6 @@ def warn(wid, current_context, **kwargs):
 	else:
 		func(current_context=current_context)
 
-#def handle_warnings(current_context):
-#	"""Delete any expired warnings."""
-#	for qid, (title, text, when) in enumerate(warning_queue):
-#		if when <= current_context['now+10']:
-#			del warning_queue[qid]
-
 """Effects
 
 An effect is a function that affects the game state or settings.
@@ -83,9 +78,6 @@ def define_effect(eid, event, **kwargs):
 effect_queue = []
 def add_effect(eid, when):
 	effect_queue.append((eid, when))
-
-#def is_effective(eid, current_context):
-#	return current_context['now'] >= effect_queue[eid][0]
 
 def affect(eid, current_context):
 	event, kwargs = effects[eid]

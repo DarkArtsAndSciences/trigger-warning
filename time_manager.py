@@ -1,5 +1,6 @@
 import datetime
 import pygame.time
+import state_manager
 
 """
 Time
@@ -13,6 +14,11 @@ def init():
 	current_time = start_time
 	frame = 0
 	offset = 0
+
+	#state_manager.add_event_handler(lambda: offset_time(-1), pygame.K_r)  # rewind time -> press R
+	state_manager.add_event_handler(offset_time, event_type='time change')
+	state_manager.add_event_handler(pause_time, event_type='time pause')
+	state_manager.add_event_handler(unpause_time, event_type='time unpause')
 
 def start():
 	init()  # reset all variables to zero/now

@@ -1,7 +1,8 @@
-import random
-import utils
 import interface_manager
 import time_manager
+import utils
+
+import random
 
 """
 Colors
@@ -26,6 +27,7 @@ colors = {
 """
 Settings
 """
+
 db = {}
 
 def set(name, value):

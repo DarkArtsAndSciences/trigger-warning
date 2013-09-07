@@ -2,12 +2,16 @@ import math
 import random
 import pygame.draw
 import settings
+import state_manager
+import time_manager
 
 def init():
 	settings.set('min boid size', 2)
 	settings.set('max boid size', 5)
 	settings.set('boid color', 'white')
 	settings.set('number of boids', 10)
+
+	state_manager.add_event_handler(add_boid, event_type='add boid')
 
 boids = {}
 
@@ -21,7 +25,7 @@ def add_boids(num_boids, current_context):
 		x = random.randrange(screen_size[0])
 		y = random.randrange(screen_size[1])
 		size = random.randrange(1,4)
-		add_boid(name, x, y, size)
+		state_manager.post_event('add boid', name=name, x=x, y=y, size=size)
 
 def draw_boids(surface):
 	for name in boids:
