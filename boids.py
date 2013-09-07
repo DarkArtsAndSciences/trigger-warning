@@ -1,3 +1,4 @@
+import math
 import random
 import pygame.draw
 import settings
@@ -112,8 +113,8 @@ class Boid:
 		def flock_rule(per_boid=None, average=1.0, scale=1.0, type='as-is'):
 			v = zero_point
 			for other_boid in boids:
-				if other_boid is self: continue
-				if per_boid: v += (per_boid(other_boid) or zero_point)
+				if boids[other_boid] is self: continue
+				if per_boid: v += (per_boid(boids[other_boid]) or zero_point)
 			v /= average
 			#print "flock rule: returning {}/{}*{} {}".format(v, average, scale, type)
 			if type == 'as-is': return v * scale
@@ -152,11 +153,12 @@ class Boid:
 			distance = self.p.distance(b.p)
 			if distance < match_velocity_distance:
 				return b.v * (match_velocity_distance - distance)/match_velocity_distance
-		near_boids = len([b for b in boids if self.p.distance(b.p) < match_velocity_distance])
+		near_boids = len([b for b in boids if self.p.distance(boids[b].p) < match_velocity_distance])
 		v += flock_rule(match_velocity, average=near_boids, type='velocity')
 
 		# Rule: Boids try to stay on screen
 		def stay_on_screen(border=0, speed=1):
+			size = settings.get('size')
 			if self.p.x < border:
 				x = (border - self.p.x)*speed
 			elif self.p.x > size[0]-border:
@@ -186,7 +188,7 @@ class Boid:
 			v += mouse_attracted
 
 		# convert from per second to per frame
-		v /= frame_rate
+		v /= settings.get('frame rate')
 
 		# update velocity
 		self.v += v

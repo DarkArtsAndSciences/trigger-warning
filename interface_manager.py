@@ -243,7 +243,7 @@ def loop():
 		"""Handle events."""
 		state_manager.handle_event_queue(current_context)
 		trigger_manager.tick(current_context)
-		#boids.update_boids()
+		boids.update_boids()
 
 		"""Redraw window."""
 		window.fill(settings.get_color('background color'))
