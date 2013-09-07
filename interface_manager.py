@@ -128,11 +128,11 @@ def draw_state_menu():
 	draw_text(window, settings.get('title'), cx(), cy()/3, 'title font', 'center', 'baseline')
 
 last_frame_letter = 0
-intro_text = """These are Triggers.
-A Trigger has a Warning and an Effect.
-The Effect happens ten seconds after the Warning.
-This time can not be changed.
-Time itself |can not|<<<<|be changed."""
+intro_text = """These are Triggers.||
+A Trigger has a Warning and an Effect.|
+The Effect happens ten seconds after the Warning.|
+This time can not be changed.||
+Time itself| can not||<<<<| be changed."""
 def draw_state_intro():
 	global last_frame_letter, intro_text
 	now = time_manager.get_since().total_seconds()
@@ -140,28 +140,40 @@ def draw_state_intro():
 	end_time = 8
 	fade_time = 2
 	length = end_time - start_time
+	letters_per_second = len(intro_text) / float(length) / settings.get('frame rate')
+
 	doneness = 1 - (length - now) / length
-	letter = int(len(intro_text) * max(min(doneness, 1), 0))
+	doneness = max(min(doneness, 1), 0)
+	letter = int(len(intro_text) * doneness)
 	this_frame_text = intro_text[last_frame_letter:letter]
 
 	if now > start_time + end_time + fade_time:
 		state_manager.post_event('state change', new_state='play')
 
 	if '|' in this_frame_text:
-		state_manager.post_event('time pause')
-		state_manager.delay_event('time unpause', time_manager.get_real_future_time(this_frame_text.count('|')))
+		pauses = this_frame_text.count('|')
+		intro_text = intro_text.replace('|','', pauses)
+		letter -= pauses
+
+		time_manager.pause_time()
+		state_manager.delay_event('time unpause', time_manager.get_real_future_time(letters_per_second * pauses))
 
 	if '<' in this_frame_text:
 		"""Remove each < and the letter before it."""
-		for i in xrange(this_frame_text.count('<')):
+		pauses = this_frame_text.count('<')
+		for i in xrange(pauses):
 			where = intro_text.find('<')
 			first = intro_text[:where-1]
 			second = intro_text[where+1:]
 			letter -= 2
 			intro_text = first + second
 
+			time_manager.pause_time()
+			state_manager.delay_event('time unpause', time_manager.get_real_time())
+			offset = -1 * pauses / letters_per_second
+			time_manager.offset_time(0)
+
 	drawable_text = intro_text[:letter]
-	drawable_text = drawable_text.replace('|','').replace('<','')
 	last_frame_letter = letter
 
 	surface = pygame.surface.Surface(settings.get('size'))
