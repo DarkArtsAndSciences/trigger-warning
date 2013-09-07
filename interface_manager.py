@@ -128,17 +128,16 @@ def draw_state_menu():
 	draw_text(window, settings.get('title'), cx(), cy()/3, 'title font', 'center', 'baseline')
 
 last_frame_letter = 0
-intro_text = """These are Triggers.||
-A Trigger has a Warning and an Effect.|
-The Effect happens ten seconds after the Warning.|
-This time can not be changed.||
+intro_text = """A Trigger has a Warning and an Effect.|
+The Effect occurs ten seconds after the Warning.|
+Triggers can not be changed.||
 Time itself| can not||<<<<| be changed."""
 def draw_state_intro():
 	global last_frame_letter, intro_text
 	now = time_manager.get_since().total_seconds()
 	start_time = 0
-	end_time = 8
-	fade_time = 2
+	end_time = 7
+	fade_time = 3
 	length = end_time - start_time
 	letters_per_second = len(intro_text) / float(length) / settings.get('frame rate')
 
@@ -167,11 +166,6 @@ def draw_state_intro():
 			second = intro_text[where+1:]
 			letter -= 2
 			intro_text = first + second
-
-			time_manager.pause_time()
-			state_manager.delay_event('time unpause', time_manager.get_real_time())
-			offset = -1 * pauses / letters_per_second
-			time_manager.offset_time(0)
 
 	drawable_text = intro_text[:letter]
 	last_frame_letter = letter
