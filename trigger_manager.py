@@ -157,12 +157,7 @@ def handle_triggers(current_context):
 				context['when'] = time_manager.plus(current_context['now'], context['delay'])  # Crash? You forgot to set a delay in define_trigger(context{HERE}). Don't just set it to zero unless you really want it to be called every frame.
 
 def init():
-	def start_warning(**kwargs):
-		print 'start warning'
-		# TODO: generate boids here
-		boids.add_boid('boid', 100, 200, 2)
-
-	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', start_warning)
+	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', boids.add_boids, num_boids=settings.get('number of boids'))
 
 	def start_effect(**kwargs):
 		print 'start effect'
