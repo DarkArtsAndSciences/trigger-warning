@@ -18,7 +18,7 @@ def init():
 
 	settings.set('size', [800, 600])  # window size / fullscreen resolution
 	settings.set('keep aspect', True)  # when resizing, keep the current aspect ratio
-	settings.set('frame rate', 30)  # maximum frame rate, reduce to limit CPU use
+	settings.set('frame rate', 60)  # maximum frame rate, reduce to limit CPU use
 
 	"""Colors"""
 	settings.set('color rotation speed', 4)  # frames per color

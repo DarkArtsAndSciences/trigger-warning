@@ -55,8 +55,7 @@ class Point:
 	def __abs__(self):
 		return Point(abs(self.x), abs(self.y))
 	def distance(self, other):
-		d = other - self
-		return math.hypot(d.x, d.y)
+		return math.hypot(self.x - other.x, self.y - other.y)
 	def velocity(self):
 		return Point(0,0).distance(self)
 	def speed(self):
