@@ -1,3 +1,4 @@
+import boids
 import settings
 import state_manager
 import time_manager
@@ -159,7 +160,9 @@ def init():
 	def start_warning(**kwargs):
 		print 'start warning'
 		# TODO: generate boids here
-	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\nYou have now been warned.', start_warning)
+		boids.add_boid('boid', 100, 200, 2)
+
+	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', start_warning)
 
 	def start_effect(**kwargs):
 		print 'start effect'
@@ -177,7 +180,7 @@ def init():
 def start(current_context):
 	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now']})
 
-	define_trigger('test trigger', 'test warning', 'test effect', {'when':time_manager.plus(current_context['now'], 15), 'repeat':3, 'delay':12})
+	define_trigger('test trigger', 'test warning', 'test effect', {'when':time_manager.plus(current_context['now'], 10), 'repeat':3, 'delay':15})
 
 def tick(current_context):
 	handle_triggers(current_context)

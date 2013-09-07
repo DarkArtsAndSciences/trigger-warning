@@ -1,6 +1,7 @@
 import pygame
 pygame.init()
 
+import boids
 import settings
 import state_manager
 import time_manager
@@ -195,6 +196,7 @@ def draw_state_game():
 			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
 			window.blit(surface, (0, 0))
 
+	boids.draw_boids(window)
 	draw_clock()
 
 	if state_manager.state != 'play':
