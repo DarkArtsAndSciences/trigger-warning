@@ -1,3 +1,4 @@
+import random
 import utils
 import interface_manager
 import time_manager
@@ -25,32 +26,7 @@ colors = {
 """
 Settings
 """
-default = {  # default settings, overriden in init()
-	'title': 'Title',  # window caption, auto-logo on main menu
-
-	'size': [800, 600],  # window size / fullscreen resolution
-	'keep aspect': True,  # when resizing, keep the current aspect ratio
-	'frame rate': 30,  # maximum frame rate, reduce to limit CPU use
-
-	'background color': 'black',
-	'foreground color': 'white',
-	'overlay color': 'white 50%',
-	'title color': 'foreground color',
-
-	'pulse color': 'rotate: black, dark gray, medium gray, light gray, white, white, light gray, medium gray, dark gray, black',
-	'panic color': 'rotate: red, cyan, yellow, magenta, green, blue',
-	'color rotation speed': 4,  # frames per color
-
-	'default font': {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'},
-	'title font': {'name':None, 'scale':4},
-}
 db = {}
-
-def init(new_settings):
-	"""Create a new settings database containing the defaults updated with the given settings."""
-	global db
-	db = default.copy()
-	db.update(new_settings)
 
 def set(name, value):
 	"""Set a setting by name.

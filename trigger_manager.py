@@ -4,6 +4,33 @@ import state_manager
 import time_manager
 import utils
 
+def init():
+	settings.set('collision trigger size', 20)
+
+	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', boids.add_boids, num_boids=settings.get('number of boids'))
+
+	def start_effect(**kwargs):
+		print 'start effect'
+		# TODO: level 1's triggers go live here
+	define_effect('start effect', start_effect)
+
+	def test_warning(**kwargs):
+		settings.set('foreground color', 'yellow')
+	define_warning('test warning', 'Test Warning', 'This is only a test.', test_warning)
+
+	def test_effect(**kwargs):
+		settings.set('foreground color', 'green')
+	define_effect('test effect', test_effect)
+
+def start(current_context):
+	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now']})
+
+	define_trigger('test trigger', 'test warning', 'test effect', {'when':time_manager.plus(current_context['now'], 10), 'repeat':3, 'delay':15})
+
+def tick(current_context):
+	handle_triggers(current_context)
+	handle_effects(current_context)
+
 """Warnings
 
 A warning is a function that affects the game interface.
@@ -156,34 +183,9 @@ def handle_triggers(current_context):
 
 				context['when'] = time_manager.plus(current_context['now'], context['delay'])  # Crash? You forgot to set a delay in define_trigger(context{HERE}). Don't just set it to zero unless you really want it to be called every frame.
 
-def init():
-	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', boids.add_boids, num_boids=settings.get('number of boids'))
-
-	def start_effect(**kwargs):
-		print 'start effect'
-		# TODO: level 1's triggers go live here
-	define_effect('start effect', start_effect)
-
-	def test_warning(**kwargs):
-		settings.set('foreground color', 'yellow')
-	define_warning('test warning', 'Test Warning', 'This is only a test.', test_warning)
-
-	def test_effect(**kwargs):
-		settings.set('foreground color', 'green')
-	define_effect('test effect', test_effect)
-
-def start(current_context):
-	define_trigger('start trigger', 'start warning', 'start effect', {'when':current_context['now']})
-
-	define_trigger('test trigger', 'test warning', 'test effect', {'when':time_manager.plus(current_context['now'], 10), 'repeat':3, 'delay':15})
-
-def tick(current_context):
-	handle_triggers(current_context)
-	#handle_warnings(current_context)
-	handle_effects(current_context)
-
-"""Self Test"""
-
+"""Self Test
+python trigger_manager.py
+"""
 if __name__ == '__main__':
 
 	def fade_warning(**kwargs):

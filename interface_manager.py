@@ -13,8 +13,76 @@ Application window
 """
 
 def init():
+	settings.set('title', 'Trigger Warning')  # window caption, auto-logo on main menu
+	settings.set('credits', """www.darkartsandsciences.com""")
+
+	settings.set('size', [800, 600])  # window size / fullscreen resolution
+	settings.set('keep aspect', True)  # when resizing, keep the current aspect ratio
+	settings.set('frame rate', 30)  # maximum frame rate, reduce to limit CPU use
+
+	"""Colors"""
+	settings.set('color rotation speed', 4)  # frames per color
+	settings.set('background color', 'black')
+	settings.set('foreground color', 'white')
+	settings.set('overlay color', 'white 50%')
+	settings.set('chalk color', [255,250,205])
+	settings.set('warning color', 'random: red, red, magenta, white')
+	settings.set('trigger color', 'random: green, green, blue, white')
+	settings.set('dead trigger color', 'blue')
+	settings.set('pulse color', 'rotate: black, dark gray, medium gray, light gray, white, white, light gray, medium gray, dark gray, black')
+	settings.set('panic color', 'rotate: red, cyan, yellow, magenta, green, blue')
+
+	"""Fonts: Futura, Unispace, Chalkduster, Rabiohead"""
+
+	settings.set('default font', {'name':None, 'scale':1, 'aa':True, 'color':'foreground color'})
+
+	settings.set('title font', {'name':'chalkduster', 'scale':3.5, 'color':'chalk color'})
+	settings.set('intro font', {'name':'rabiohead', 'scale':2.5, 'color':'chalk color'})
+
+	settings.set('warning title font', {'name':'chalkduster', 'scale':3, 'color':'warning color'})
+	settings.set('warning text font', {'name':'rabiohead', 'scale':2, 'color':'red'})
+
+	settings.set('clock font', {'name':'unispace', 'scale':2})
+
+	settings.set('fps font', {'name':'futura', 'scale':0.85, 'color':'light gray'})
+	settings.set('label font', {'name':'futura', 'scale':0.75})
+
+	"""Initialize pygame window."""
 	pygame.display.set_caption(settings.get('title'))
 	resize(settings.get('size'))
+
+"""
+Main game loop, called once per frame
+"""
+def loop():
+
+	"""Loop until application exit."""
+	while state_manager.done == False:
+
+		"""Update time."""
+		time_manager.tick(settings.get('frame rate'), state_manager.state)
+
+		"""Create context."""
+		current_context = time_manager.get_time_context()
+
+		"""Handle events."""
+		state_manager.handle_event_queue(current_context)
+		trigger_manager.tick(current_context)
+		boids.update_boids()
+
+		"""Redraw window."""
+		window.fill(settings.get_color('background color'))
+		draw_state[state_manager.state]()
+		draw_fps()
+
+		pygame.display.flip()
+
+	"""Exit cleanly."""
+	pygame.quit()
+
+"""
+Window settings
+"""
 
 window = None  # pygame.Surface
 
@@ -225,32 +293,3 @@ draw_state = {
 	'lose': draw_state_game,
 	'credits': draw_state_credits
 }
-
-"""
-Main game loop, called once per frame
-"""
-def loop():
-
-	"""Loop until application exit."""
-	while state_manager.done == False:
-
-		"""Update time."""
-		time_manager.tick(settings.get('frame rate'), state_manager.state)
-
-		"""Create context."""
-		current_context = time_manager.get_time_context()
-
-		"""Handle events."""
-		state_manager.handle_event_queue(current_context)
-		trigger_manager.tick(current_context)
-		boids.update_boids()
-
-		"""Redraw window."""
-		window.fill(settings.get_color('background color'))
-		draw_state[state_manager.state]()
-		draw_fps()
-
-		pygame.display.flip()
-
-	"""Exit cleanly."""
-	pygame.quit()

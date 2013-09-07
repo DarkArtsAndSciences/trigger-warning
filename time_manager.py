@@ -70,7 +70,6 @@ Editable time
 def offset_time(seconds=0):
 	global offset
 	offset += seconds
-	#offset += float(frames)/settings.get('frame rate')
 
 time_is_paused = False
 def pause_time():

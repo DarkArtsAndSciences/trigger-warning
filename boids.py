@@ -3,6 +3,12 @@ import random
 import pygame.draw
 import settings
 
+def init():
+	settings.set('min boid size', 2)
+	settings.set('max boid size', 5)
+	settings.set('boid color', 'white')
+	settings.set('number of boids', 10)
+
 boids = {}
 
 def add_boid(name, x, y, size, color='boid color'):
@@ -57,6 +63,7 @@ class Point:
 zero_point = Point(0,0)
 
 class Boid:
+	min_size = 1
 	max_size = 5
 
 	def __init__(self, x, y, size, color):

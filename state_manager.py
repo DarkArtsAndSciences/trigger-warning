@@ -3,7 +3,7 @@ import pygame
 
 import time_manager
 import trigger_manager
-import utils  # log_function_call()
+#import utils  # log_function_call()
 
 """
 Custom event types
