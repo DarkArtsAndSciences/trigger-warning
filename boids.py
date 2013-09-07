@@ -9,23 +9,20 @@ def init():
 	settings.set('min boid size', 2)
 	settings.set('max boid size', 5)
 	settings.set('boid color', 'white')
-	settings.set('number of boids', 10)
+	"""'number of boids' is set in trigger_manager.init"""
 
 	state_manager.add_event_handler(add_boid, event_type='add boid')
 
 boids = {}
 
-def add_boid(name, x, y, size, color='boid color'):
-	boids[name] = Boid(x, y, size, color)
+def add_boid(name):
+	boids[name] = Boid(name)
 
 def add_boids(num_boids, current_context):
+	print 'adding {} boids'.format(num_boids)
+	time_per_boid = 10.0 / num_boids
 	for i in xrange(num_boids):
-		name = 'boid {}'.format(i)
-		screen_size = settings.get('size')
-		x = random.randrange(screen_size[0])
-		y = random.randrange(screen_size[1])
-		size = random.randrange(1,4)
-		state_manager.post_event('add boid', name=name, x=x, y=y, size=size)
+		state_manager.delay_event('add boid', time_manager.get_real_future_time(i*time_per_boid), name='boid {}'.format(i))
 
 def draw_boids(surface):
 	for name in boids:
@@ -70,14 +67,18 @@ class Boid:
 	min_size = 1
 	max_size = 5
 
-	def __init__(self, x, y, size, color):
+	def __init__(self, name):
 		# physics
+		screen_size = settings.get('size')
+		x = random.randrange(screen_size[0])
+		y = random.randrange(screen_size[1])
 		self.p = Point(x, y)
 		self.v = zero_point
-		self.size = size
+		self.size = random.randrange(Boid.min_size, Boid.max_size)
 
 		# display
-		self.color = color
+		self.name = name
+		self.color = 'boid color'
 
 		# mood
 		self.triggered = False
@@ -121,7 +122,7 @@ class Boid:
 			for other_boid in boids:
 				if boids[other_boid] is self: continue
 				if per_boid: v += (per_boid(boids[other_boid]) or zero_point)
-			v /= average
+			if average: v /= average
 			#print "flock rule: returning {}/{}*{} {}".format(v, average, scale, type)
 			if type == 'as-is': return v * scale
 			if type == 'towards': return(v - self.p) * scale

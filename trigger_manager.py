@@ -6,7 +6,7 @@ import utils
 
 def init():
 	settings.set('collision trigger size', 20)
-	settings.set('number of boids', 20)
+	settings.set('number of boids', 10)
 
 	define_warning('start warning', 'Warning', 'The game will start in ten seconds.\n\nYou have been warned.', boids.add_boids, num_boids=settings.get('number of boids'))
 
