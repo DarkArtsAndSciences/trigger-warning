@@ -6,7 +6,6 @@ import settings
 boids = {}
 
 def add_boid(name, x, y, size, color='boid color'):
-	#boids[name] = (x, y, size, color)
 	boids[name] = Boid(x, y, size, color)
 
 def add_boids(num_boids, current_context):
@@ -20,10 +19,7 @@ def add_boids(num_boids, current_context):
 
 def draw_boids(surface):
 	for name in boids:
-		color = settings.get_color(boids[name].color)
-		pos = [int(boids[name].p.x), int(boids[name].p.y)]
-		size = boids[name].size
-		pygame.draw.circle(surface, color, pos, size)
+		boids[name].draw(surface)
 
 def update_boids():
 	for name in boids:
@@ -81,8 +77,6 @@ class Boid:
 		# but some boids may wait up to five seconds longer
 		self.mood_length = 1 + 5*random.random()
 
-		#boids.append(self)
-
 	def __str__(self):
 		return "boid at {},{}".format(self.p.x, self.p.y)
 
@@ -92,11 +86,12 @@ class Boid:
 	def get_rect(self):
 		return (self.p.x, self.p.y, self.size, self.size)
 
-	#def draw(self, screen, fade=1):
-	#	surface = pygame.surface.Surface((self.size, self.size))
-	#	surface.set_alpha(255*fade)
-	#	pygame.draw.rect(surface, settings.get_color(self.color), surface.get_rect())
-	#	screen.blit(surface, self.get_rect())
+	def draw(self, surface, fade=1):
+		color = settings.get_color(self.color)
+		fade_surface = pygame.surface.Surface((self.size*2, self.size*2))
+		fade_surface.set_alpha(255*fade)
+		pygame.draw.circle(fade_surface, color, [self.size,self.size], self.size)
+		surface.blit(fade_surface, self.get_rect())
 
 	# update this boids position
 	# v: new velocity
