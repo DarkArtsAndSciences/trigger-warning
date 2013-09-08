@@ -1,6 +1,8 @@
 import math
 import random
+
 import pygame.draw
+
 import settings
 import state_manager
 import time_manager
@@ -13,33 +15,196 @@ def init():
 
 	state_manager.add_event_handler(add_boid, event_type='add boid')
 
-boids = {}
+"""
+Flock
+"""
+
+flock = {}
 
 def add_boid(name):
-	boids[name] = Boid(name)
+	flock[name] = Boid(name)
 
 def add_boids(num_boids, current_context):
-	print 'adding {} boids'.format(num_boids)
+	#print 'adding {} boids'.format(num_boids)
 	time_per_boid = 10.0 / num_boids
 	for i in xrange(num_boids):
 		state_manager.delay_event('add boid', time_manager.get_real_future_time(i*time_per_boid), name='boid {}'.format(i))
 
 def draw_boids(surface):
-	for name in boids:
-		boids[name].draw(surface)
+	for boid in flock:
+		flock[boid].draw(surface)
+
+"""
+Behavior
+"""
+
+behaviors = []
+
+def add_rule(type, func, **kwargs):
+	"""Add a behavior rule to the flock.
+
+	type: 'self' or 'flock'
+		self: func(boid) will be called once for each boid in the flock
+		flock: func(boid, other) will be called once for every pair of boids in the flock. FLOCK RULES ARE SLOW FOR LARGE FLOCKS.
+
+	func: a function that returns a Point which will affect its boid's velocity.
+
+		It must accept the required parameters for its type as listed above. It may also have any kwargs except 'type' and the names in update_boid's local_kwargs.
+
+		It may have side effects (i.e. to change emotions on collision), but be aware that directly affecting Boid.p or .v will look like the boid was moved by an outside force instead of flying there under its own power.
+
+	average [optional, defaults to 1]: 'flock' rules only. 'flock size', 'near boids' or an int (typically, the number of boids affected by the rule). The points from each boid pair will be summed, then divided by this value.
+
+	rule_type [required for flock rules, defaults to 'as-is']:
+		Determines what to do with the point produced by summing and averaging the points from each pair of boids.
+		as-is: nothing
+		towards: vector from 'boid' to it
+		velocity: ?
+
+	scale [optional, defaults to 1]: Multiply the effect of this rule by this value.
+	"""
+	behaviors.append((type, func, kwargs))
+
+def random_rule(boid):
+	"""Rule random.random(): Boids move randomly"""
+	return Point((random.random()-0.5), (random.random()-0.5))
+add_rule('self', random_rule, scale=0.001)
+
+def towards_center(boid, other):
+	"""Rule 1: Boids fly towards the flock's center"""
+	return other.p
+add_rule('flock', towards_center, average='flock size', scale=0.01, rule_type='towards')
+
+def avoid_collision(boid, other):
+	"""Rule 2: Boids try to keep a min distance away from other boids"""
+	if boid.p.distance(other.p) < boid.too_close:
+		boid.collisions += 1  # anger
+
+		"""Move towards smaller boids and away from larger boids.
+		TODO: more behaviors for different moods
+		"""
+		if (boid.size == other.size):
+			scale = -1
+		else:
+			scale = boid.size / (boid.size - other.size) - 1
+
+		"""Return the distance between us * the towards/away multiplier."""
+		return (other.p - boid.p) * scale
+add_rule('flock', avoid_collision, rule_type='as-is')
+
+def match_velocity(boid, other):
+	"""Rule 3: Boids try to fly at the same speed as nearby boids"""
+	distance = boid.p.distance(other.p)
+	if distance < boid.near:  # if this boid is close to that boid
+		return other.v * (boid.near - distance)/boid.near
+add_rule('flock', match_velocity, average='near boids', rule_type='velocity')
+
+def stay_on_screen(boid, border=0, speed=1):
+	"""Rule: Boids try to stay on screen"""
+	size = settings.get('size')
+	if boid.p.x < border:
+		x = (border - boid.p.x)*speed
+	elif boid.p.x > size[0]-border:
+		x = (size[0]-border - boid.p.x)*speed
+	else:
+		x = 0
+	if boid.p.y < border:
+		y = (border - boid.p.y)*speed
+	elif boid.p.y > size[1]-border:
+		y = (size[1]-border - boid.p.y)*speed
+	else:
+		y = 0
+	return Point(x,y)
+add_rule('self', stay_on_screen, border=100, speed=0.1)
+
+def mouse_attract(boid, attractiveness):
+	"""Rule: If the mouse is down, fly towards it"""
+	if pygame.mouse.get_pressed()[0]:
+		mouse_point = Point(*pygame.mouse.get_pos())
+		return (mouse_point - boid.p) * attractiveness * mouse_point.speed()
+add_rule('self', mouse_attract, attractiveness=0.0002)
+
+# TODO: add perching / prevent boids going below the screen
 
 def update_boids():
-	for name in boids:
-		boids[name].update()
+	"""Calculate a new velocity and position for each boid in the flock.
 
-"""Physics"""
+	This function should be called once per frame, before drawing the boids.
+
+	With a large flock, most of the CPU time goes to this function. If the game is too slow with many boids, this is the function to optimize. (If the game is still too slow with three boids, it's something else.)
+	"""
+	flock_size = len(flock)-1
+	local_kwargs = ['average', 'scale', 'rule_type']
+
+	for boid in flock:
+		v = [Point(0,0)]*len(behaviors)
+
+		"""Flock rules"""
+		for other in flock:  # this is the slowest line in the entire codebase
+			if flock[other] is boid: continue
+
+			for i, (type, func, kwargs) in enumerate(behaviors):
+				if type == 'flock':
+					func_kwargs = {k:kwargs[k] for k in kwargs if k not in local_kwargs}
+					vi = func(flock[boid], flock[other], **func_kwargs)
+					if vi: v[i] += vi
+
+		for i, (type, func, kwargs) in enumerate(behaviors):
+			if type == 'self':
+				func_kwargs = {k:kwargs[k] for k in kwargs if k not in local_kwargs}
+				vi = func(flock[boid], **func_kwargs)
+				if vi: v[i] += vi
+
+			if 'average' in kwargs:
+				if kwargs['average'] == 'flock size':
+					average = flock_size
+				elif kwargs['average'] == 'near boids':
+					average = len(flock[boid].get_near_boids(flock[boid].near))
+				if average == 0:
+					average = 1
+				v[i] /= average
+
+			if 'scale' in kwargs:
+				scale = kwargs['scale']
+			else:
+				scale = 1
+
+			if 'rule_type' in kwargs:
+				if kwargs['rule_type'] == 'towards':
+					v[i] = (v[i] - flock[boid].p) * scale
+				elif kwargs['rule_type'] == 'velocity':
+					v[i] = (v[i] - flock[boid].v) * scale
+				else:  # 'as-is' or unrecognized
+					v[i] = v[i] * scale
+
+		for vi in v:
+			vi /= settings.get('frame rate')  # per second -> per frame
+			flock[boid].v += vi  # update velocity
+
+		"""Speed limit"""
+		min_speed = flock[boid].size * 1.5
+		max_speed = min_speed + (Boid.max_size - flock[boid].size)
+		max_speed += flock[boid].collisions/20.0  # anger
+		max_speed += v[-2].speed()  # don't limit mouse attraction
+		max_speed += v[-1].speed()  # or keep-on-screen
+		current_speed = flock[boid].v.speed()
+		if current_speed > max_speed:
+			flock[boid].v /= current_speed * max_speed
+		if current_speed < min_speed:
+			flock[boid].v *= min_speed - current_speed
+
+		flock[boid].p += flock[boid].v  # update position
+
+"""
+Points
+"""
 
 class Point:
 	def __init__(self, x, y):
 		self.x = float(x)
 		self.y = float(y)
 	def __str__(self):
-		return "{},{}".format(self.x, self.y)
+		return "{},{}".format(round(self.x,3), round(self.y,3))
 	def __repr__(self):
 		return "Point({},{})".format(self.x, self.y)
 	def __add__(self, other):
@@ -55,37 +220,45 @@ class Point:
 	def __abs__(self):
 		return Point(abs(self.x), abs(self.y))
 	def distance(self, other):
+		# TODO: consider inlining this for speed
 		return math.hypot(self.x - other.x, self.y - other.y)
 	def velocity(self):
+		# TODO: can this be sped up?
 		return Point(0,0).distance(self)
 	def speed(self):
+		# TODO: can this be sped up?
 		return math.fabs(self.velocity())
-zero_point = Point(0,0)
+
+"""
+Boids
+"""
 
 class Boid:
 	min_size = 1
 	max_size = 5
 
 	def __init__(self, name):
-		# physics
+		"""Physics"""
 		screen_size = settings.get('size')
 		x = random.randrange(screen_size[0])
 		y = random.randrange(screen_size[1])
-		self.p = Point(x, y)
-		self.v = zero_point
-		self.size = random.randrange(Boid.min_size, Boid.max_size)
+		self.p = Point(x,y)
+		self.v = Point(0,0)
+		#self.size = random.randrange(Boid.min_size, Boid.max_size)
+		self.size = random.choice([1,1,1,1,1,2,2,2,3,4,5])
+		self.near = self.size * screen_size[0]/15
+		self.too_close = self.size * screen_size[0]/75
 
-		# display
+		"""Display"""
 		self.name = name
 		self.color = 'boid color'
 
-		# mood
+		"""Mood"""
 		self.triggered = False
 		self.collisions = 0
 		self.last_mood_change = 0
 
-		# boids change their mood no more often than once per second,
-		# but some boids may wait up to five seconds longer
+		"""Boids change their mood no more often than once per second, but some boids may wait up to five seconds longer."""
 		self.mood_length = 1 + 5*random.random()
 
 	def __str__(self):
@@ -97,132 +270,30 @@ class Boid:
 	def get_rect(self):
 		return (self.p.x, self.p.y, self.size, self.size)
 
+	def get_near_boids(self, distance=None):
+		"""Return a list of all boids within distance."""
+		if not distance: distance = self.near
+		return [b for b in flock if self is not b and self.p.distance(flock[b].p)<=self.near]
+
 	def draw(self, surface, fade=1):
+		"""TODO: Try replacing this with a subsurface for a speed boost."""
 		color = settings.get_color(self.color)
 		fade_surface = pygame.surface.Surface((self.size, self.size))
 		fade_surface.set_alpha(255*fade)
 		pygame.draw.rect(fade_surface, color, [0,0,self.size,self.size])
 		surface.blit(fade_surface, self.get_rect())
 
-	# update this boids position
-	# v: new velocity
-	# b: other boid
-	def update(self):
-
-		# given how to react to one other boid, calculate the outer loop
-		# flock rules may have side effects for moods; don't touch the physics
-		#
-		# to return the flock's average, pass flocksize-1 to average
-		# to scale the result, pass a multiplier to scale
-		# type 'as-is' returns the resulting point
-		# type 'towards' returns a vector from self.p to the point
-		def flock_rule(per_boid=None, average=1.0, scale=1.0, type='as-is'):
-			v = zero_point
-			for other_boid in boids:
-				if boids[other_boid] is self: continue
-				if per_boid: v += (per_boid(boids[other_boid]) or zero_point)
-			if average: v /= average
-			#print "flock rule: returning {}/{}*{} {}".format(v, average, scale, type)
-			if type == 'as-is': return v * scale
-			if type == 'towards': return(v - self.p) * scale
-			if type == 'velocity': return(v - self.v) * scale
-
-		# Rule random.random(): Boids move randomly
-		def random_rule(scale=1.0):
-			return Point((random.random()-0.5)*scale, (random.random()-0.5)*scale)
-		v = random_rule(0.001)
-
-		# Rule 1: Boids fly towards the flock's center
-		v += flock_rule(per_boid=lambda b: b.p, average=len(boids)-1, scale=1.0/100, type='towards')
-
-		# Rule 2: Boids keep a min distance away from other boids
-		collision_distance = self.size * 2
-		def avoid_collision(b):
-			# if this boid is too close to that boid
-			if self.p.distance(b.p) < collision_distance:
-				# count near misses and get angry
-				self.collisions += 1
-				# move towards smaller birds and away from larger birds
-				distance = b.p - self.p
-				if (self.size == b.size):
-					scale = -1
-				else:
-					scale = self.size / (self.size - b.size) - 1
-				#print "near miss with boid sizes {}/{}, moving {}".format(self.size, b.size, distance*scale)
-				return distance*scale
-		v += flock_rule(avoid_collision)
-
-		# Rule 3: Boids try to fly as fast as nearby boids
-		match_velocity_distance = self.size * 50
-		def match_velocity(b):
-			# if this boid is close to that boid
-			distance = self.p.distance(b.p)
-			if distance < match_velocity_distance:
-				return b.v * (match_velocity_distance - distance)/match_velocity_distance
-		near_boids = len([b for b in boids if self.p.distance(boids[b].p) < match_velocity_distance])
-		v += flock_rule(match_velocity, average=near_boids, type='velocity')
-
-		# Rule: Boids try to stay on screen
-		def stay_on_screen(border=0, speed=1):
-			size = settings.get('size')
-			if self.p.x < border:
-				x = (border - self.p.x)*speed
-			elif self.p.x > size[0]-border:
-				x = (size[0]-border - self.p.x)*speed
-			else:
-				x = 0
-			if self.p.y < border:
-				y = (border - self.p.y)*speed
-			elif self.p.y > size[1]-border:
-				y = (size[1]-border - self.p.y)*speed
-			else:
-				y = 0
-			return Point(x,y)
-		on_screen = stay_on_screen(100,0.1)
-		v += on_screen
-
-		# Rule: Boids fly towards or away from locations
-		def towards_location(p, scale=1):
-			return (p - self.p) * scale
-
-		# if the mouse is down, move towards it
-		mouse_attract = 0.00005
-		mouse_attracted = zero_point
-		if pygame.mouse.get_pressed()[0]:
-			mouse_point = Point(*pygame.mouse.get_pos())
-			mouse_attracted = towards_location(mouse_point, mouse_attract*mouse_point.speed())
-			v += mouse_attracted
-
-		# convert from per second to per frame
-		v /= settings.get('frame rate')
-
-		# update velocity
-		self.v += v
-
-		# speed limit
-		min_speed = self.size * 1.5
-		max_speed = min_speed + (1*Boid.max_size-self.size)
-		max_speed += self.collisions/20.0  # anger
-		max_speed += mouse_attracted.speed()  # don't limit mouse attraction
-		max_speed += on_screen.speed()  # or keep-on-screen
-		current_speed = self.v.speed()
-		if current_speed > max_speed:
-			self.v /= current_speed * max_speed
-		if current_speed < min_speed:
-			self.v *= min_speed - current_speed
-
-		# update position
-		self.p += self.v
-
 	def change_mood(self, now_raw):
-		# boids have short memories
+		"""Boids have short memories"""
 		if now_raw < boid.last_mood_change + boid.mood_length: return
 		boid.last_mood_change = now_raw
 
-		# forget collisions
+		"""Forget collisions"""
 		if self.collisions: self.collisions /= 2
 
-		# update color
+		"""Update color
+		TODO: broken?
+		"""
 		if (self.collisions > 10): self.color = 'blue'
 		if (self.collisions > 20): self.color = 'red'
 		if (self.triggered): self.color = 'yellow'
