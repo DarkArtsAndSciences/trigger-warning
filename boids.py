@@ -99,9 +99,9 @@ class Boid:
 
 	def draw(self, surface, fade=1):
 		color = settings.get_color(self.color)
-		fade_surface = pygame.surface.Surface((self.size*2, self.size*2))
+		fade_surface = pygame.surface.Surface((self.size, self.size))
 		fade_surface.set_alpha(255*fade)
-		pygame.draw.circle(fade_surface, color, [self.size,self.size], self.size)
+		pygame.draw.rect(fade_surface, color, [0,0,self.size,self.size])
 		surface.blit(fade_surface, self.get_rect())
 
 	# update this boids position
