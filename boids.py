@@ -137,9 +137,11 @@ def update_boids():
 	local_kwargs = ['average', 'scale', 'rule_type']
 
 	for boid in flock:
-		v = [Point(0,0)]*len(behaviors)
+		flock[boid].update_mood()
 
 		"""Flock rules"""
+		v = [Point(0,0)]*len(behaviors)
+
 		for other in flock:  # this is the slowest line in the entire codebase
 			if flock[other] is boid: continue
 
@@ -275,25 +277,29 @@ class Boid:
 		if not distance: distance = self.near
 		return [b for b in flock if self is not b and self.p.distance(flock[b].p)<=self.near]
 
-	def draw(self, surface, fade=1):
-		"""TODO: Try replacing this with a subsurface for a speed boost."""
+	def draw(self, surface):
 		color = settings.get_color(self.color)
+		alpha = 255 #- self.collisions  # TODO: health, not mood
+
+		"""TODO: Try replacing this with a subsurface for a speed boost."""
 		fade_surface = pygame.surface.Surface((self.size, self.size))
-		fade_surface.set_alpha(255*fade)
+		fade_surface.set_alpha(alpha)
 		pygame.draw.rect(fade_surface, color, [0,0,self.size,self.size])
 		surface.blit(fade_surface, self.get_rect())
 
-	def change_mood(self, now_raw):
-		"""Boids have short memories"""
-		if now_raw < boid.last_mood_change + boid.mood_length: return
-		boid.last_mood_change = now_raw
+	def update_mood(self):
+		"""Update and display this boid's mood."""
 
-		"""Forget collisions"""
-		if self.collisions: self.collisions /= 2
+		"""Boids wait mood_length seconds between mood changes. Time edits are ignored."""
+		now = time_manager.get_real_since().total_seconds()
+		if now < self.last_mood_change + self.mood_length: return
+		self.last_mood_change = now
 
-		"""Update color
-		TODO: broken?
-		"""
-		if (self.collisions > 10): self.color = 'blue'
-		if (self.collisions > 20): self.color = 'red'
+		"""Boids have short memories."""
+		if self.collisions:  # forget half of them
+			self.collisions /= 2
+
+		"""Boids change color to display their mood to the flock and to the player."""
+		if (self.collisions > len(flock)): self.color = 'blue'
+		if (self.collisions > len(flock)*2): self.color = 'red'
 		if (self.triggered): self.color = 'yellow'
