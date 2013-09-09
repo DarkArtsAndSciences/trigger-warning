@@ -19,10 +19,10 @@ def init():
 Flock
 """
 
-flock = {}
+flock = []
 
 def add_boid(name):
-	flock[name] = Boid(name)
+	flock.append(Boid(name))
 
 def add_boids(num_boids, current_context):
 	#print 'adding {} boids'.format(num_boids)
@@ -32,7 +32,7 @@ def add_boids(num_boids, current_context):
 
 def draw_boids(surface):
 	for boid in flock:
-		flock[boid].draw(surface)
+		boid.draw(surface)
 
 """
 Behavior
@@ -92,12 +92,12 @@ def avoid_collision(boid, other):
 		return (other.p - boid.p) * scale
 add_rule('flock', avoid_collision, rule_type='as-is')
 
-def match_velocity(boid, other):
+def match_speed(boid, other):
 	"""Rule 3: Boids try to fly at the same speed as nearby boids"""
 	distance = boid.p.distance(other.p)
 	if distance < boid.near:  # if this boid is close to that boid
 		return other.v * (boid.near - distance)/boid.near
-add_rule('flock', match_velocity, average='near boids', rule_type='velocity')
+add_rule('flock', match_speed, average='near boids', rule_type='velocity')
 
 def stay_on_screen(boid, border=0, speed=1):
 	"""Rule: Boids try to stay on screen"""
@@ -137,31 +137,31 @@ def update_boids():
 	local_kwargs = ['average', 'scale', 'rule_type']
 
 	for boid in flock:
-		flock[boid].update_mood()
+		boid.update_mood()
 
 		"""Flock rules"""
 		v = [Point(0,0)]*len(behaviors)
 
 		for other in flock:  # this is the slowest line in the entire codebase
-			if flock[other] is boid: continue
+			if other is boid: continue
 
 			for i, (type, func, kwargs) in enumerate(behaviors):
 				if type == 'flock':
 					func_kwargs = {k:kwargs[k] for k in kwargs if k not in local_kwargs}
-					vi = func(flock[boid], flock[other], **func_kwargs)
+					vi = func(boid, other, **func_kwargs)
 					if vi: v[i] += vi
 
 		for i, (type, func, kwargs) in enumerate(behaviors):
 			if type == 'self':
 				func_kwargs = {k:kwargs[k] for k in kwargs if k not in local_kwargs}
-				vi = func(flock[boid], **func_kwargs)
+				vi = func(boid, **func_kwargs)
 				if vi: v[i] += vi
 
 			if 'average' in kwargs:
 				if kwargs['average'] == 'flock size':
 					average = flock_size
 				elif kwargs['average'] == 'near boids':
-					average = len(flock[boid].get_near_boids(flock[boid].near))
+					average = len(boid.get_near_boids(boid.near))
 				if average == 0:
 					average = 1
 				v[i] /= average
@@ -173,29 +173,29 @@ def update_boids():
 
 			if 'rule_type' in kwargs:
 				if kwargs['rule_type'] == 'towards':
-					v[i] = (v[i] - flock[boid].p) * scale
+					v[i] = (v[i] - boid.p) * scale
 				elif kwargs['rule_type'] == 'velocity':
-					v[i] = (v[i] - flock[boid].v) * scale
+					v[i] = (v[i] - boid.v) * scale
 				else:  # 'as-is' or unrecognized
 					v[i] = v[i] * scale
 
 		for vi in v:
 			vi /= settings.get('frame rate')  # per second -> per frame
-			flock[boid].v += vi  # update velocity
+			boid.v += vi  # update velocity
 
 		"""Speed limit"""
-		min_speed = flock[boid].size * 1.5
-		max_speed = min_speed + (Boid.max_size - flock[boid].size)
-		max_speed += flock[boid].collisions/20.0  # anger
+		min_speed = boid.size * 1.5
+		max_speed = min_speed + (Boid.max_size - boid.size)
+		max_speed += boid.collisions/20.0  # anger
 		max_speed += v[-2].speed()  # don't limit mouse attraction
 		max_speed += v[-1].speed()  # or keep-on-screen
-		current_speed = flock[boid].v.speed()
+		current_speed = boid.v.speed()
 		if current_speed > max_speed:
-			flock[boid].v /= current_speed * max_speed
+			boid.v /= current_speed * max_speed
 		if current_speed < min_speed:
-			flock[boid].v *= min_speed - current_speed
+			boid.v *= min_speed - current_speed
 
-		flock[boid].p += flock[boid].v  # update position
+		boid.p += boid.v  # update position
 
 """
 Points
@@ -222,14 +222,9 @@ class Point:
 	def __abs__(self):
 		return Point(abs(self.x), abs(self.y))
 	def distance(self, other):
-		# TODO: consider inlining this for speed
-		return math.hypot(self.x - other.x, self.y - other.y)
-	def velocity(self):
-		# TODO: can this be sped up?
-		return Point(0,0).distance(self)
+		return math.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
 	def speed(self):
-		# TODO: can this be sped up?
-		return math.fabs(self.velocity())
+		return math.sqrt(self.x**2 + self.y**2)
 
 """
 Boids
@@ -275,7 +270,7 @@ class Boid:
 	def get_near_boids(self, distance=None):
 		"""Return a list of all boids within distance."""
 		if not distance: distance = self.near
-		return [b for b in flock if self is not b and self.p.distance(flock[b].p)<=self.near]
+		return [b for b in flock if self is not b and self.p.distance(b.p)<=self.near]
 
 	def draw(self, surface):
 		color = settings.get_color(self.color)
