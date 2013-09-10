@@ -194,18 +194,22 @@ def draw_state_menu():
 	draw_text(window, settings.get('title'), cx(), cy()/3, 'title font', 'center', 'baseline')
 
 last_frame_letter = 0
-intro_text = """A Trigger has a Warning and an Effect.|
-The Effect occurs ten seconds after the Warning.|
-Triggers can not be changed.||
-Time itself| can not||<<<<| be changed."""
+intro_text = """A Trigger has a Warning and an Effect.||
+The Effect occurs ten seconds after the Warning.||
+Triggers can not be changed.||||
+Time itself|| can not||<<<<||| be changed.||"""
+intro_text_length = len(intro_text.replace('|','').replace('<',''))
+
 def draw_state_intro():
 	global last_frame_letter, intro_text
+
+	fr = settings.get('frame rate')
 	now = time_manager.get_since().total_seconds()
-	start_time = 0
-	end_time = 7
-	fade_time = 3
+
+	start_time = 0  # 1
+	end_time = 7  # 7
+	fade_time = 2  # 2
 	length = end_time - start_time
-	letters_per_second = len(intro_text) / float(length) / settings.get('frame rate')
 
 	doneness = 1 - (length - now) / length
 	doneness = max(min(doneness, 1), 0)
@@ -215,23 +219,28 @@ def draw_state_intro():
 	if now > start_time + end_time + fade_time:
 		state_manager.post_event('state change', new_state='play')
 
+	pauses = 0
 	if '|' in this_frame_text:
-		pauses = this_frame_text.count('|')
+		pauses += this_frame_text.count('|')
 		intro_text = intro_text.replace('|','', pauses)
 		letter -= pauses
-
-		time_manager.pause_time()
-		state_manager.delay_event('time unpause', time_manager.get_real_future_time(letters_per_second * pauses))
+		pauses *= fr  # one second pause
 
 	if '<' in this_frame_text:
 		"""Remove each < and the letter before it."""
-		pauses = this_frame_text.count('<')
-		for i in xrange(pauses):
+		pauses2 = this_frame_text.count('<')
+		for i in xrange(pauses2):
 			where = intro_text.find('<')
 			first = intro_text[:where-1]
 			second = intro_text[where+1:]
 			letter -= 2
 			intro_text = first + second
+		pauses += pauses2  # one frame pause
+
+	if pauses:
+		time_manager.pause_time()
+		pause_time = 1.0 * pauses * intro_text_length / length / fr / fr
+		state_manager.delay_event('time unpause', time_manager.get_real_future_time(pause_time))
 
 	drawable_text = intro_text[:letter]
 	last_frame_letter = letter
