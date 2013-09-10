@@ -207,11 +207,11 @@ def draw_state_intro():
 	fr = settings.get('frame rate')
 	since = time_manager.get_since().total_seconds()
 
-	DEBUG = False
+	DEBUG = True
 	if DEBUG:
 		start_time = 0
-		end_time = 3
-		fade_time = 0.25
+		end_time = 2
+		fade_time = 1
 		pause_multiplier = 1  # one frame pause per |
 	else:
 		start_time = 0.5
