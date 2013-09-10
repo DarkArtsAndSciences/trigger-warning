@@ -1,3 +1,4 @@
+import math
 import pygame
 pygame.init()
 
@@ -204,54 +205,63 @@ def draw_state_intro():
 	global last_frame_letter, intro_text
 
 	fr = settings.get('frame rate')
-	now = time_manager.get_since().total_seconds()
+	since = time_manager.get_since().total_seconds()
 
-	start_time = 0  # 1
-	end_time = 7  # 7
-	fade_time = 2  # 2
+	DEBUG = False
+	if DEBUG:
+		start_time = 0
+		end_time = 3
+		fade_time = 0.25
+		pause_multiplier = 1  # one frame pause per |
+	else:
+		start_time = 0.5
+		end_time = 7
+		fade_time = 2.5
+		pause_multiplier = fr  # one second pause per |
 	length = end_time - start_time
 
-	doneness = 1 - (length - now) / length
-	doneness = max(min(doneness, 1), 0)
-	letter = int(len(intro_text) * doneness)
-	this_frame_text = intro_text[last_frame_letter:letter]
+	if since > start_time:
+		doneness = 1 - (start_time + length - since) / length
+		doneness = max(min(doneness, 1), 0)
+		letter = int(len(intro_text) * doneness)
+		this_frame_text = intro_text[last_frame_letter:letter]
 
-	if now > start_time + end_time + fade_time:
-		state_manager.post_event('state change', new_state='play')
+		if since > start_time + end_time + fade_time:
+			state_manager.post_event('state change', new_state='play')
 
-	pauses = 0
-	if '|' in this_frame_text:
-		pauses += this_frame_text.count('|')
-		intro_text = intro_text.replace('|','', pauses)
-		letter -= pauses
-		pauses *= fr  # one second pause
+		pauses = 0
+		if '|' in this_frame_text:
+			pauses += this_frame_text.count('|')
+			intro_text = intro_text.replace('|','', pauses)
+			letter -= pauses
+			pauses *= pause_multiplier
 
-	if '<' in this_frame_text:
-		"""Remove each < and the letter before it."""
-		pauses2 = this_frame_text.count('<')
-		for i in xrange(pauses2):
-			where = intro_text.find('<')
-			first = intro_text[:where-1]
-			second = intro_text[where+1:]
-			letter -= 2
-			intro_text = first + second
-		pauses += pauses2  # one frame pause
+		if '<' in this_frame_text:
+			"""Remove each < and the letter before it."""
+			pauses2 = this_frame_text.count('<')
+			for i in xrange(pauses2):
+				where = intro_text.find('<')
+				first = intro_text[:where-1]
+				second = intro_text[where+1:]
+				letter -= 2
+				intro_text = first + second
+			pauses += pauses2  # one frame pause
 
-	if pauses:
-		time_manager.pause_time()
-		pause_time = 1.0 * pauses * intro_text_length / length / fr / fr
-		state_manager.delay_event('time unpause', time_manager.get_real_future_time(pause_time))
+		if pauses:
+			time_manager.pause_time()
+			pause_time = 1.0 * pauses * intro_text_length / length / fr / fr
+			state_manager.delay_event('time unpause', time_manager.get_real_future_time(pause_time))
 
-	drawable_text = intro_text[:letter]
-	last_frame_letter = letter
+		drawable_text = intro_text[:letter]
+		last_frame_letter = letter
 
-	surface = pygame.surface.Surface(settings.get('size'))
-	surface.set_alpha(255*fade(now, start_time, end_time, fade_time))
-	surface.set_colorkey((0,0,0))
-	draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
-	draw_text(surface, 'Intro', cx(), cy()/3, 'title font', 'center', 'baseline')
-	window.blit(surface, (0, 0))
+		surface = pygame.surface.Surface(settings.get('size'))
+		surface.set_alpha(255*fade(since, start_time, end_time, fade_time))
+		surface.set_colorkey((0,0,0))
+		draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
+		window.blit(surface, (0, 0))
 
+	draw_text(window, 'Intro', cx(), cy()/3, 'title font', 'center', 'baseline')
 	draw_clock()
 
 def draw_state_game():
