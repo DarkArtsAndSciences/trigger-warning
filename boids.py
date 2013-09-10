@@ -131,7 +131,7 @@ def stay_on_screen(boid, border=0, speed=1):
 	else:
 		y = 0
 	return x,y
-add_solo_rule(stay_on_screen, border=100, speed=0.1)
+add_solo_rule(stay_on_screen, border=50, speed=0.05)
 
 def mouse_attract(boid, attractiveness):
 	"""Rule: If the mouse is down, fly towards it"""
@@ -305,7 +305,10 @@ class Boid:
 		"""TODO: Try replacing this with a subsurface for a speed boost."""
 		fade_surface = pygame.surface.Surface((self.size, self.size))
 		fade_surface.set_alpha(alpha)
+
 		pygame.draw.rect(fade_surface, color, [0,0,self.size,self.size])
+		# TODO: draw circles for near and too_close
+
 		surface.blit(fade_surface, self.rect)
 
 	def update_mood(self):
