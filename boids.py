@@ -30,12 +30,8 @@ flock_vy = []
 
 def add_boid(name):
 	boid = Boid()
-	#flock_p.append((flock_px[boid], flock_py[boid]))
-	#flock_v.append((flock_vx[boid], flock_vy[boid]))
-	#flock.append(boid)
 
 def add_boids(num_boids, current_context):
-	#print 'adding {} boids'.format(num_boids)
 	time_per_boid = 10.0 / num_boids
 	for i in xrange(num_boids):
 		state_manager.delay_event('add boid', time_manager.get_real_future_time(i*time_per_boid), name='boid {}'.format(i))
@@ -146,7 +142,7 @@ def mouse_attract(boid, attractiveness):
 		m = attractiveness * speed(x,y)
 		return x*m, y*m
 	return 0,0
-add_solo_rule(mouse_attract, attractiveness=0.0002)
+add_solo_rule(mouse_attract, attractiveness=0.000001)
 
 # TODO: add perching / prevent boids going below the screen
 
@@ -163,32 +159,21 @@ def update_boids():
 	for boid in xrange(flock_size):
 		flock[boid].update_mood()
 
-		#print '-'*20
-		#print 'UPDATING BOIDS'
-		#print 'flock size = {}'.format(flock_size)
-		#print flock
-		#print '-'*20
-
 		"""Behavior rules"""
 		sv = [(0,0)]*len(solo_rule)
 		fv = [[(0,0)]*len(flock)]*len(flock_rule)
 
 		for rule, (func, fargs, _,_,_) in enumerate(flock_rule):
 			fv[rule] = [func(boid,other,**fargs) for other in xrange(flock_size) if other != boid]
-			#print 'fv[{}]={}'.format(rule, fv[rule])
-		#print 'fv={}'.format(fv)
 
 		for rule, (func, fargs) in enumerate(solo_rule):
 			sv[rule] = func(boid, **fargs)
-			#print 'sv={}'.format(sv)
 
 		for rule, (func, fargs, rule_type, average, scale) in enumerate(flock_rule):
 
 			"""Sum the list of points into a single point."""
 			fv[rule] = map(sum,itertools.izip(*fv[rule]))
 			if not fv[rule] or not fv[rule][0] or not fv[rule][1]: continue
-
-			#print 'fv[{}]={}'.format(rule, fv[rule])
 
 			if average == 'flock size':
 				average = flock_size-1
@@ -197,21 +182,20 @@ def update_boids():
 			if average == 0: average = 1  # avoid /0 errors
 			if average != 1:
 				fv[rule] = (fv[rule][0]/average, fv[rule][1]/average)
-				#print 'average fv[{}]={}'.format(rule, fv[rule])
 
 			if rule_type == 'towards':
-				#print 'boid at {},{} moving towards {}:'.format(flock_px[boid],flock_py[boid],fv[rule])
 				fv[rule] = ((fv[rule][0]-flock_px[boid])*scale, (fv[rule][1]-flock_py[boid])*scale)
-				#print 'fv[{}]={}'.format(rule, fv[rule])
 			elif rule_type == 'velocity':
 				fv[rule] = ((fv[rule][0]-flock_vx[boid])*scale, (fv[rule][1]-flock_vy[boid])*scale)
 			else:
 				fv[rule] = (fv[rule][0]*scale, fv[rule][1]*scale)
 
 		"""Combine all the rules into one point."""
-		mouse_attract_speed = speed(*sv[-1])
-		onscreen_speed = speed(*sv[-2])
-		sv = map(sum,itertools.izip(*sv)) or (0,0)
+		mouse_v = sv[-1]
+		onscreen_v = sv[-2]
+
+		#sv = map(sum,itertools.izip(*sv)) or (0,0)
+		sv = sv[0]
 		fv = map(sum,itertools.izip(*fv)) or (0,0)
 		fr = settings.get('frame rate')  # per second -> per frame
 		v = ((sv[0]+fv[0])*fr, (sv[1]+fv[1])*fr)
@@ -220,8 +204,6 @@ def update_boids():
 		min_speed = int(flock[boid].size * 1.5)
 		max_speed = min_speed + (Boid.max_size - flock[boid].size)
 		max_speed += flock[boid].collisions/20.0  # anger
-		max_speed += mouse_attract_speed  # don't limit mouse attraction
-		max_speed += onscreen_speed  # or keep-on-screen
 		current_speed = speed(*v)
 		if current_speed > max_speed:
 			m = current_speed * max_speed
@@ -229,6 +211,8 @@ def update_boids():
 		if current_speed < min_speed:
 			m = min_speed - current_speed
 			v = (v[0]*m, v[1]*m)
+
+		v = (v[0]+mouse_v[0]+onscreen_v[0], v[1]+mouse_v[1]+onscreen_v[1])
 
 		"""Update the boid's velocity."""
 		flock[boid].update_velocity(*v)
