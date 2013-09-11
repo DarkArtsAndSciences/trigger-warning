@@ -185,6 +185,14 @@ def fade(now, start_time, end_time=None, length=10):
 	if now > end_time + length: return 0
 	return 1 - (now-end_time)/length
 
+def get_subsurface(surface, alpha=255, bg='background color'):
+	bg = settings.get_color(bg)
+	subsurface = pygame.surface.Surface(surface.get_size())
+	subsurface.set_alpha(alpha)
+	subsurface.set_colorkey(bg)
+	subsurface.fill(bg)
+	return subsurface
+
 """
 State draw routines
 
@@ -255,13 +263,10 @@ def draw_state_intro():
 		drawable_text = intro_text[:letter]
 		last_frame_letter = letter
 
-		bg = settings.get_color('background color')
-		surface = pygame.surface.Surface(settings.get('size'))
-		surface.set_alpha(255*fade(since, start_time, end_time, fade_time))
-		surface.set_colorkey(bg)
-		surface.fill(bg)
+		alpha = 255*fade(since, start_time, end_time, fade_time)
+		surface = get_subsurface(window, alpha)
 		draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
-		window.blit(surface, (0, 0))
+		window.blit(surface, (0, 0))  # TODO: blend mode
 
 	draw_text(window, 'Intro', cx(), cy()/3, 'title font', 'center', 'baseline')
 	draw_clock()
@@ -275,11 +280,7 @@ def draw_state_game():
 		current_context = time_manager.get_time_context()
 		alpha = fade(current_context['since'].total_seconds(), when.total_seconds())
 		if alpha > 0.0:
-			bg = settings.get_color('background color')
-			surface = pygame.surface.Surface(settings.get('size'))
-			surface.set_alpha(255*alpha)
-			surface.set_colorkey(bg)
-			surface.fill(bg)
+			surface = get_subsurface(window, alpha)
 			draw_text(surface, title, cx(), cy()/3, 'warning title font', 'center', 'baseline')
 			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
 			window.blit(surface, (0, 0))
@@ -290,7 +291,7 @@ def draw_state_game():
 	if state_manager.state != 'play':
 		overlay = pygame.surface.Surface(settings.get('size'), pygame.SRCALPHA)
 		overlay.fill(settings.get_color('overlay color'))
-		window.blit(overlay, (0, 0))
+		window.blit(overlay, (0, 0))  # TODO: blend mode?
 
 		if state_manager.state == 'pause':
 			draw_text(window, 'Pause', cx(), cy()/3, 'title font', 'center', 'baseline')
