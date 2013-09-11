@@ -66,44 +66,61 @@ rule_type [required for flock rules, defaults to None]:
 	towards: vector from 'boid' to it
 	velocity: ?
 
+limit: apply speed limit to this rule
+
 scale [optional, defaults to 1]: Multiply the effect of this rule by this value.
 """
-def add_flock_rule(func, rule_type=None, average=1, scale=1, **fargs):
-	flock_rule.append((func, fargs, rule_type, average, scale))
+def add_flock_rule(func, rule_type=None, average=1, scale=1, limit=True, **fargs):
+	flock_rule.append((func, fargs, rule_type, average, scale, limit))
 
-def add_solo_rule(func, **fargs):
-	solo_rule.append((func, fargs))
+def add_solo_rule(func, limit=False, **fargs):
+	solo_rule.append((func, fargs, limit))
 
-def random_rule(boid, scale):
-	"""Rule random.random(): Boids move randomly"""
-	return round((random.random()-0.5)*scale,2), round((random.random()-0.5)*scale,2)
-add_solo_rule(random_rule, scale=0.001)
+def random_rule(boid):
+	"""Rule random.random(): Boids move in a random direction."""
+	angle = math.radians(random.randrange(360))
+	return math.cos(angle), math.sin(angle)
+#add_solo_rule(random_rule, limit=True)
 
 def towards_center(boid, other):
 	"""Rule 1: Boids fly towards the flock's center"""
 	#print 'towards_center({},{}) = {},{}'.format(boid, other, flock_px[other], flock_py[other])
 	return flock_px[other], flock_py[other]
-add_flock_rule(towards_center, 'towards', average='flock size', scale=0.01)
+add_flock_rule(towards_center, 'towards', 'flock size', 0.001, limit=True)
 
 def avoid_collision(boid, other):
 	"""Rule 2: Boids try to keep a min distance away from other boids"""
-	if distance(boid, other) < flock[boid].too_close:
+
+	d = distance(boid, other)
+	bx = flock_px[boid]
+	by = flock_py[boid]
+	ox = flock_px[other]
+	oy = flock_py[other]
+	bs = flock[boid].size
+	os = flock[other].size
+	btc = flock[boid].too_close
+	otc = flock[other].too_close
+
+	if d < btc + otc:
+		dx = ox - bx  # distance from boid to other
+		dy = oy - by
+
+		scale = -1
+
 		flock[boid].collisions += 1  # anger
+		# NOTE: color won't change until update_mood() is called next frame
 
-		"""Move towards smaller boids and away from larger boids.
-		TODO: more behaviors for different moods
-		"""
-		bs = flock[boid].size
-		os = flock[other].size
-		if (bs == os):  # if the two boids are the same size
-			scale = -1  # move away equally
-		else:
-			scale = bs/(bs-os) -1  # smooth falloff for other sizes
+		if flock[boid].color == 'blue':
+			if bs != os:  # prevent /0 error
+				scale = bs/(bs-os) -1
+		elif flock[boid].color == 'red':
+			scale = (bs-os)**2
 
-		"""Return the distance between us * the towards/away multiplier."""
-		return (flock_px[other]-flock_px[boid])*scale, (flock_py[other]-flock_py[boid])*scale
+		#print '  scale ({} vs {}) = {}'.format(bs, os, scale)
+
+		return dx*scale, dy*scale
 	return 0,0
-add_flock_rule(avoid_collision)
+add_flock_rule(avoid_collision, limit=True)
 
 def match_speed(boid, other):
 	"""Rule 3: Boids try to fly at the same speed as nearby boids"""
@@ -113,7 +130,7 @@ def match_speed(boid, other):
 		m = (near - d)/near  # smooth falloff
 		return flock_vx[other]*m, flock_vy[other]*m
 	return 0,0
-add_flock_rule(match_speed, 'velocity', 'near boids')
+#add_flock_rule(match_speed, 'velocity', 'near boids', limit=True)
 
 def stay_on_screen(boid, border=0, speed=1):
 	"""Rule: Boids try to stay on screen"""
@@ -131,7 +148,7 @@ def stay_on_screen(boid, border=0, speed=1):
 	else:
 		y = 0
 	return x,y
-add_solo_rule(stay_on_screen, border=50, speed=0.05)
+add_solo_rule(stay_on_screen, border=100, speed=0.1, limit=False)
 
 def mouse_attract(boid, attractiveness):
 	"""Rule: If the mouse is down, fly towards it"""
@@ -142,7 +159,7 @@ def mouse_attract(boid, attractiveness):
 		m = attractiveness * speed(x,y)
 		return x*m, y*m
 	return 0,0
-add_solo_rule(mouse_attract, attractiveness=0.000001)
+#add_solo_rule(mouse_attract, attractiveness=0.00001, limit=False)
 
 # TODO: add perching / prevent boids going below the screen
 
@@ -163,17 +180,17 @@ def update_boids():
 		sv = [(0,0)]*len(solo_rule)
 		fv = [[(0,0)]*len(flock)]*len(flock_rule)
 
-		for rule, (func, fargs, _,_,_) in enumerate(flock_rule):
+		for rule, (func, fargs, _,_,_,_) in enumerate(flock_rule):
 			fv[rule] = [func(boid,other,**fargs) for other in xrange(flock_size) if other != boid]
 
-		for rule, (func, fargs) in enumerate(solo_rule):
+		for rule, (func, fargs, _) in enumerate(solo_rule):
 			sv[rule] = func(boid, **fargs)
 
-		for rule, (func, fargs, rule_type, average, scale) in enumerate(flock_rule):
+		for rule, (func, fargs, rule_type, average, scale, _) in enumerate(flock_rule):
 
 			"""Sum the list of points into a single point."""
-			fv[rule] = map(sum,itertools.izip(*fv[rule]))
-			if not fv[rule] or not fv[rule][0] or not fv[rule][1]: continue
+			fv[rule] = sum_points(fv[rule])
+			#if not fv[rule] or not fv[rule][0] or not fv[rule][1]: continue
 
 			if average == 'flock size':
 				average = flock_size-1
@@ -184,37 +201,42 @@ def update_boids():
 				fv[rule] = (fv[rule][0]/average, fv[rule][1]/average)
 
 			if rule_type == 'towards':
-				fv[rule] = ((fv[rule][0]-flock_px[boid])*scale, (fv[rule][1]-flock_py[boid])*scale)
+				fv[rule] = ((fv[rule][0]-flock_px[boid])*scale, (fv[rule][1]-flock_py[boid])*scale)  # (v-b.p)*scale
 			elif rule_type == 'velocity':
-				fv[rule] = ((fv[rule][0]-flock_vx[boid])*scale, (fv[rule][1]-flock_vy[boid])*scale)
+				fv[rule] = ((fv[rule][0]-flock_vx[boid])*scale, (fv[rule][1]-flock_vy[boid])*scale)  # (v-b.v)*scale
 			else:
 				fv[rule] = (fv[rule][0]*scale, fv[rule][1]*scale)
 
-		"""Combine all the rules into one point."""
-		mouse_v = sv[-1]
-		onscreen_v = sv[-2]
+		"""Limit the speed of some rules."""
+		lsv = sum_points([sv[i] for i in xrange(len(sv)) if solo_rule[i][2]])  # rules with limit=True
+		lfv = sum_points([fv[i] for i in xrange(len(fv)) if flock_rule[i][5]])
+		lv = sum_points([lsv, lfv])
+		current_speed = speed(*lv)
 
-		#sv = map(sum,itertools.izip(*sv)) or (0,0)
-		sv = sv[0]
-		fv = map(sum,itertools.izip(*fv)) or (0,0)
-		fr = settings.get('frame rate')  # per second -> per frame
-		v = ((sv[0]+fv[0])*fr, (sv[1]+fv[1])*fr)
-
-		"""Speed limit"""
-		min_speed = int(flock[boid].size * 1.5)
-		max_speed = min_speed + (Boid.max_size - flock[boid].size)
-		max_speed += flock[boid].collisions/20.0  # anger
-		current_speed = speed(*v)
+		#max_speed = min_speed + (Boid.max_size - flock[boid].size)
+		#max_speed += flock[boid].collisions/20.0  # anger
+		max_speed = 7 - flock[boid].size
 		if current_speed > max_speed:
 			m = current_speed * max_speed
-			v = (v[0]/m, v[1]/m)
-		if current_speed < min_speed:
-			m = min_speed - current_speed
-			v = (v[0]*m, v[1]*m)
+			lv = (lv[0]/m, lv[1]/m)
 
-		v = (v[0]+mouse_v[0]+onscreen_v[0], v[1]+mouse_v[1]+onscreen_v[1])
+		"""Combine with the unlimited rules."""
+		usv = sum_points([sv[i] for i in xrange(len(sv)) if not solo_rule[i][2]])  # rules with limit=True
+		ufv = sum_points([fv[i] for i in xrange(len(fv)) if not flock_rule[i][5]])
+		v = sum_points([lv, usv, ufv])
+
+		"""Moving boids have a minimum speed."""
+		#current_speed = speed(*v)
+		#if current_speed > 0:
+		#	#min_speed = int(flock[boid].size * 1.5)
+		#	min_speed = 1
+		#	if current_speed < min_speed:
+		#		m = current_speed * min_speed
+		#		v = (v[0]/m, v[1]/m)
 
 		"""Update the boid's velocity."""
+		fr = settings.get('frame rate')  # per second -> per frame
+		v = (v[0]/fr, v[1]/fr)
 		flock[boid].update_velocity(*v)
 
 """
@@ -226,6 +248,12 @@ def distance(boid, other):
 
 def speed(x, y):
 	return math.sqrt(x**2 + y**2)
+
+def sum_points(points):
+	"""Given a list of x,y tuples, return x1+x2+...,y1+y2..."""
+	if not points: return 0,0
+	if len(points) == 1: return points[0]
+	return map(sum,itertools.izip(*points))
 
 """
 Boids
@@ -248,10 +276,10 @@ class Boid:
 		flock_vy.append(0)
 
 		#self.size = random.randrange(Boid.min_size, Boid.max_size)
-		self.size = random.choice([1,1,1,1,1,2,2,2,3,4,5])
+		self.size = random.choice([1,1,2,3,4,5])
 
-		self.near = self.size * screen_size[0]/15
-		self.too_close = self.size * screen_size[0]/75
+		self.near = self.size * 20
+		self.too_close = self.size * 5
 
 		"""Display"""
 		self.color = 'boid color'
@@ -299,17 +327,29 @@ class Boid:
 		flock_py[self.id] += flock_vy[self.id]
 
 	def draw(self, surface):
-		color = settings.get_color(self.color)
-		alpha = 255 #- self.collisions  # TODO: health, not mood
+		r = self.near
+		csize = r*2, r*2
+		ccent = r, r
+		container = pygame.surface.Surface(csize, pygame.SRCALPHA)
+		# TODO: blend modes?
 
-		"""TODO: Try replacing this with a subsurface for a speed boost."""
-		fade_surface = pygame.surface.Surface((self.size, self.size))
-		fade_surface.set_alpha(alpha)
+		#alpha = 255 - self.collisions  # TODO: health, not mood
+		#container.set_alpha(alpha)
 
-		pygame.draw.rect(fade_surface, color, [0,0,self.size,self.size])
-		# TODO: draw circles for near and too_close
+		eye_color = settings.get_color('white', 248)
+		boid_color = settings.get_color(self.color, 127)
+		ring_color = settings.get_color(self.color, 15)
 
-		surface.blit(fade_surface, self.rect)
+		pygame.draw.circle(container, ring_color, ccent, self.near, 1)
+		pygame.draw.circle(container, ring_color, ccent, self.too_close)
+		pygame.draw.circle(container, ring_color, ccent, self.size*3, 2)
+		pygame.draw.circle(container, boid_color, ccent, self.size*2, 1)
+		pygame.draw.circle(container, eye_color, ccent, self.size)
+
+		x = flock_px[self.id]
+		y = flock_py[self.id]
+		rect = (x - ccent[0], y - ccent[1], csize[0], csize[1])
+		surface.blit(container, rect)
 
 	def update_mood(self):
 		"""Update and display this boid's mood."""
