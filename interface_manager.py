@@ -23,8 +23,8 @@ def init():
 
 	"""Colors"""
 	settings.set('color rotation speed', 4)  # frames per color
-	settings.set('background color', 'black')
-	settings.set('foreground color', 'white')
+	settings.set('background color', 'dark gray')
+	settings.set('foreground color', 'light gray')
 	settings.set('overlay color', 'white 50%')
 	settings.set('chalk color', [255,250,205])
 	settings.set('warning color', 'random: red, red, magenta, white')
@@ -255,9 +255,11 @@ def draw_state_intro():
 		drawable_text = intro_text[:letter]
 		last_frame_letter = letter
 
+		bg = settings.get_color('background color')
 		surface = pygame.surface.Surface(settings.get('size'))
 		surface.set_alpha(255*fade(since, start_time, end_time, fade_time))
-		surface.set_colorkey((0,0,0))
+		surface.set_colorkey(bg)
+		surface.fill(bg)
 		draw_text(surface, drawable_text, cx(), cy()/2, 'intro font', 'center', 'center', line_spacing=1.5, limit=letter)
 		window.blit(surface, (0, 0))
 
@@ -273,9 +275,11 @@ def draw_state_game():
 		current_context = time_manager.get_time_context()
 		alpha = fade(current_context['since'].total_seconds(), when.total_seconds())
 		if alpha > 0.0:
+			bg = settings.get_color('background color')
 			surface = pygame.surface.Surface(settings.get('size'))
 			surface.set_alpha(255*alpha)
-			surface.set_colorkey((0,0,0))
+			surface.set_colorkey(bg)
+			surface.fill(bg)
 			draw_text(surface, title, cx(), cy()/3, 'warning title font', 'center', 'baseline')
 			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
 			window.blit(surface, (0, 0))
