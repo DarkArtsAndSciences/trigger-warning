@@ -65,7 +65,7 @@ def get_errorprone(name):
 	"""Get a setting by name, without error correction."""
 	return db[name]
 
-def get_color(color_name):
+def get_color(color_name, alpha=None):
 	"""Given a color name, return its RGB values.
 	A color name may be:
 		an index into colors ('white', 'black')
@@ -74,27 +74,30 @@ def get_color(color_name):
 		a rotate instruction, containing 'rotate: ' followed by a comma-separated list of color names; this will return the next color in the list after every color_rotation_speed frames ('rotate: red, green, blue')
 		a random instruction, containing 'random: ' followed by a comma-separated list of color names; this will return a randomly chosen color from the list ('random: red, green, blue')
 	"""
+
 	if isinstance(color_name, list):
+		if alpha:
+			color_name = [color_name[0], color_name[1], color_name[2], alpha]
 		return color_name
 
 	if color_name in colors:
-		return colors[color_name]
+		return get_color(colors[color_name], alpha)
 
 	if color_name in db:
-		return get_color(db[color_name])
+		return get_color(db[color_name], alpha)
 
 	if color_name[:8] == 'rotate: ':
 		rotation = [r.strip(' ') for r in color_name[8:].split(',')]
 		crs = get('color rotation speed', 1)
 		which_color = int(time_manager.frame/crs) % len(rotation)
-		return get_color(rotation[which_color])
+		return get_color(rotation[which_color], alpha)
 
 	if color_name[:8] == 'random: ':
 		rotation = [r.strip(' ') for r in color_name[8:].split(',')]
-		return get_color(random.choice(rotation))
+		return get_color(random.choice(rotation), alpha)
 
-	print 'Unknown color name: {}'.format(color_name)
-	return [0,0,0]
+	print 'Unknown color name: {}, alpha: {}'.format(color_name, alpha)
+	return [127,127,127,255]
 
 def get_font_settings(font_name):
 	"""Given a font name in settings, return a dict with all the options for that font."""
