@@ -76,64 +76,123 @@ def add_flock_rule(func, rule_type=None, average=1, scale=1, limit=True, **fargs
 def add_solo_rule(func, limit=False, **fargs):
 	solo_rule.append((func, fargs, limit))
 
-def random_rule(boid):
-	"""Rule random.random(): Boids move in a random direction."""
-	angle = math.radians(random.randrange(360))
-	return math.cos(angle), math.sin(angle)
-#add_solo_rule(random_rule, limit=True)
+# TODO: move add_rule calls below into init()
+
+def random_rule(boid, scale):
+	"""Rule random.random(): Boids move in a random direction, like fireflies."""
+	angle = random.random() * 2*math.pi
+	scale *= random.random()
+	x = math.cos(angle) * scale
+	y = math.sin(angle) * scale
+	return x,y
+
+add_solo_rule(random_rule, scale=0.25, limit=True)
 
 def towards_center(boid, other):
-	"""Rule 1: Boids fly towards the flock's center"""
-	#print 'towards_center({},{}) = {},{}'.format(boid, other, flock_px[other], flock_py[other])
-	return flock_px[other], flock_py[other]
-add_flock_rule(towards_center, 'towards', 'flock size', 0.001, limit=True)
+	"""Rule 1: Boids fly towards the flock's center.
+
+	TODO: Try replacing this and stay_on_screen with a single solo rule attracting boids to the center of the screen (or to the game's current Attract Point...that could replace mouse_attract too).
+	This might be a major speed increase. Flock rules are slow.
+	"""
+
+	color = settings.get_color(flock[boid].color)
+	normal = settings.get_color('white')
+	angry = settings.get_color('red')
+
+	if color == normal:
+		return flock_px[other], flock_py[other]
+
+	if color == angry:  # move away instead
+		return -flock_px[other], -flock_py[other]
+
+	return 0,0  # other mood, ignore this rule
+
+add_flock_rule(towards_center, 'towards', 'flock size', 0.0005, limit=True)
 
 def avoid_collision(boid, other):
-	"""Rule 2: Boids try to keep a min distance away from other boids"""
+	"""Rule 2: Boids try to keep a min distance away from other boids."""
 
 	d = distance(boid, other)
+	btc = flock[boid].too_close
+	otc = flock[other].too_close
+
+	"""Check if the other boid is close enough to be a threat.
+	Check d against btc to allow small boids to get inside bigger boids' personal space.
+	Check d against btc+otc for a bubble-shield effect.
+	"""
+	if d > btc:
+		return 0,0  # too far, ignore it
+
+	"""Count collisions
+	TODO: these are near misses; also count collisions, split anger and fear.
+	NOTE: color won't change until update_mood() is called next frame
+	"""
+	flock[boid].collisions += 1  # anger
+
+	"""Cache boid variables for speed and shorten names for readability."""
+	bs = flock[boid].size
+	os = flock[other].size
+
+	"""Calculate the distance between boid and other."""
 	bx = flock_px[boid]
 	by = flock_py[boid]
 	ox = flock_px[other]
 	oy = flock_py[other]
-	bs = flock[boid].size
-	os = flock[other].size
-	btc = flock[boid].too_close
-	otc = flock[other].too_close
+	dx = ox - bx
+	dy = oy - by
 
-	if d < btc + otc:
-		dx = ox - bx  # distance from boid to other
-		dy = oy - by
+	"""Calculate the angle between boid and other."""
+	ba = angle_between(flock_vx[boid], flock_vy[boid], True)
+	oa = angle_between(flock_vx[other], flock_vy[other], True)
+	da = math.fabs(ba - oa) # difference between boid directions
+	ca = angle_between(flock_vx[other]-flock_vx[boid], flock_vy[other]-flock_vy[boid], True)
 
-		scale = -1
+	'''
+	TODO: Head-on and rear-end collisions result in high-speed reverse bounces, when they could avoid each other by flying sideways slightly. Fix, if it doesn't involve much CPU time (remember, this is a flock rule).
+	if ca%180 < 45:
+		print '  front collision'
+		# move perpendicular to ca
+	else:
+		print '  side collision'
+		# don't change motion?
+	'''
 
-		flock[boid].collisions += 1  # anger
-		# NOTE: color won't change until update_mood() is called next frame
+	scale = -1  # default behavior (avoid): return -dx,-dy
 
-		if flock[boid].color == 'blue':
-			if bs != os:  # prevent /0 error
-				scale = bs/(bs-os) -1
-		elif flock[boid].color == 'red':
-			scale = (bs-os)**2
+	color = settings.get_color(flock[boid].color)
+	angry = settings.get_color('blue')
+	angrier = settings.get_color('red')
 
-		#print '  scale ({} vs {}) = {}'.format(bs, os, scale)
+	if color == angry:  # attack smaller boids, flee larger
+		if bs != os:  # prevent /0 error
+			scale = bs/(bs-os) -1
 
-		return dx*scale, dy*scale
-	return 0,0
-add_flock_rule(avoid_collision, limit=True)
+	if color == angrier:  # very angry, attack everything!
+		scale = bs
+
+	return dx*scale, dy*scale
+
+add_flock_rule(avoid_collision, limit=False)
 
 def match_speed(boid, other):
-	"""Rule 3: Boids try to fly at the same speed as nearby boids"""
+	"""Rule 3: Boids try to fly at the same speed as nearby boids."""
+
 	d = distance(boid, other)
 	near = flock[boid].near
 	if d < near:  # if this boid is close to that boid
-		m = (near - d)/near  # smooth falloff
-		return flock_vx[other]*m, flock_vy[other]*m
+		m = (near - d)/near  # smooth falloff for how close
+		return flock_vx[other]*m, flock_vy[other]*m  # match their speed
+
 	return 0,0
-#add_flock_rule(match_speed, 'velocity', 'near boids', limit=True)
+
+add_flock_rule(match_speed, 'velocity', 'near boids', scale=0.125, limit=True)
 
 def stay_on_screen(boid, border=0, speed=1):
-	"""Rule: Boids try to stay on screen"""
+	"""Rule: Boids try to stay on screen.
+
+	TODO: base border size on boid size
+	"""
+
 	size = settings.get('size')
 	if flock_px[boid] < border:
 		x = (border - flock_px[boid])*speed
@@ -148,18 +207,22 @@ def stay_on_screen(boid, border=0, speed=1):
 	else:
 		y = 0
 	return x,y
+
 add_solo_rule(stay_on_screen, border=100, speed=0.1, limit=False)
 
 def mouse_attract(boid, attractiveness):
-	"""Rule: If the mouse is down, fly towards it"""
+	"""Rule: If the mouse is down, fly towards it. Boids that are far away fly faster than those that are nearby."""
+
 	if pygame.mouse.get_pressed()[0]:
 		mousex, mousey = pygame.mouse.get_pos()
 		x = mousex - flock_px[boid]
 		y = mousey - flock_py[boid]
 		m = attractiveness * speed(x,y)
 		return x*m, y*m
+
 	return 0,0
-#add_solo_rule(mouse_attract, attractiveness=0.00001, limit=False)
+
+add_solo_rule(mouse_attract, attractiveness=0.0001, limit=False)
 
 # TODO: add perching / prevent boids going below the screen
 
@@ -249,6 +312,12 @@ def distance(boid, other):
 def speed(x, y):
 	return math.sqrt(x**2 + y**2)
 
+def angle_between(dx, dy, degrees=False):
+	angle = math.atan2(-dy, dx)
+	angle %= 2 * math.pi
+	if degrees: angle = math.degrees(angle)
+	return angle
+
 def sum_points(points):
 	"""Given a list of x,y tuples, return x1+x2+...,y1+y2..."""
 	if not points: return 0,0
@@ -278,7 +347,7 @@ class Boid:
 		#self.size = random.randrange(Boid.min_size, Boid.max_size)
 		self.size = random.choice([1,1,2,3,4,5])
 
-		self.near = self.size * 20
+		self.near = self.size * 10
 		self.too_close = self.size * 5
 
 		"""Display"""
@@ -327,9 +396,13 @@ class Boid:
 		flock_py[self.id] += flock_vy[self.id]
 
 	def draw(self, surface):
-		r = self.near
-		csize = r*2, r*2
-		ccent = r, r
+		n = self.near
+		tc = self.too_close
+		s = self.size
+		id = self.id
+
+		csize = n*2, n*2
+		ccent = n, n
 		container = pygame.surface.Surface(csize, pygame.SRCALPHA)
 		# TODO: blend modes?
 
@@ -340,14 +413,15 @@ class Boid:
 		boid_color = settings.get_color(self.color, 127)
 		ring_color = settings.get_color(self.color, 15)
 
-		pygame.draw.circle(container, ring_color, ccent, self.near, 1)
-		pygame.draw.circle(container, ring_color, ccent, self.too_close)
-		pygame.draw.circle(container, ring_color, ccent, self.size*3, 2)
-		pygame.draw.circle(container, boid_color, ccent, self.size*2, 1)
-		pygame.draw.circle(container, eye_color, ccent, self.size)
+		pygame.draw.circle(container, ring_color, ccent, n, 1)
+		pygame.draw.circle(container, ring_color, ccent, tc)
+		pygame.draw.circle(container, ring_color, ccent, s*3, 2)
+		pygame.draw.circle(container, boid_color, ccent, s*2, 1)
+		pygame.draw.circle(container, eye_color, ccent, s)
+		# TODO: draw head/tail line showing velocity angle/magnitude
 
-		x = flock_px[self.id]
-		y = flock_py[self.id]
+		x = flock_px[id]
+		y = flock_py[id]
 		rect = (x - ccent[0], y - ccent[1], csize[0], csize[1])
 		surface.blit(container, rect)
 
