@@ -280,7 +280,7 @@ def draw_state_game():
 		current_context = time_manager.get_time_context()
 		alpha = fade(current_context['since'].total_seconds(), when.total_seconds())
 		if alpha > 0.0:
-			surface = get_subsurface(window, alpha)
+			surface = get_subsurface(window, 255*alpha)
 			draw_text(surface, title, cx(), cy()/3, 'warning title font', 'center', 'baseline')
 			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
 			window.blit(surface, (0, 0))
