@@ -106,6 +106,16 @@ def resize(new_size):
 	global window
 	window = pygame.display.set_mode(new_size, window_mode)
 
+	global left_clock_x, right_clock_x, clock_y, clock_label_y
+	fs = settings.get_font_settings('label font')
+	font = pygame.font.SysFont(fs['name'], fs['size'])
+	offset = 10
+	height = font.get_linesize()
+	left_clock_x = tx(offset)
+	right_clock_x = bx(offset)
+	clock_label_y = by(offset)
+	clock_y = by(offset+height)
+
 """Shortcuts for top/center/bottom of window."""
 def tx(border=0): return border
 def ty(border=0): return border
@@ -165,20 +175,23 @@ def draw_text(surface, text, x=0, y=0, font_name='default font', xalign='left', 
 		line_y += line_height
 
 def draw_clock():
-	clock_string = time_manager.get_clock_string()
-	draw_text(window, clock_string, tx(10), by(30), 'clock font', 'left', 'baseline')
-	draw_text(window, 'game time', tx(10), by(25), 'label font', 'left', 'top')
+	"""Draw two clocks, one for game time and one for real time."""
+	game_clock_string = time_manager.get_clock_string()
 	real_clock_string = time_manager.get_real_clock_string()
-	draw_text(window, real_clock_string, bx(10), by(30), 'clock font', 'right', 'baseline')
-	draw_text(window, 'real time', bx(10), by(25), 'label font', 'right', 'top')
+	draw_text(window, game_clock_string, left_clock_x, clock_y, 'clock font', 'left', 'bottom')
+	draw_text(window, real_clock_string, right_clock_x, clock_y, 'clock font', 'right', 'bottom')
+	draw_text(window, 'game time', left_clock_x, clock_label_y, 'label font', 'left', 'bottom')
+	draw_text(window, 'real time', right_clock_x, clock_label_y, 'label font', 'right', 'bottom')
 
 def draw_fps():
+	"""Display the current frame rate."""
 	fps = time_manager.clock.get_fps()
 	fps_string = 'fps: {}'.format(int(fps))
 	draw_text(window, fps_string, bx(10), ty(10), 'fps font', 'right', 'top')
 
-# alpha multiplier, 0.0 < fade < 1.0
 def fade(now, start_time, end_time=None, length=10):
+	"""Calculate an alpha for fading out from start_time to end_time over length seconds. Returns a float between 0.0 and 1.0; multiply by 255 for a value usable by pygame.
+	"""
 	if not end_time: end_time = start_time
 	if now < start_time: return 0
 	if now < end_time: return 1
