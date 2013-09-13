@@ -91,7 +91,7 @@ add_solo_rule(random_rule, scale=0.25, limit=True)
 def towards_attract_point(boid, scale):
 	"""Rule 1: Boids fly towards a point, usually the flock's center.
 
-	Instead of having each boid recalculate the center of the rest of the flock, as in the original pseudocode, this function assumes that the center of the entire flock is in the global variable flock_center (set by update_boids once per frame) and simply subtracts this boid's contribution to the average.
+	Instead of having each boid recalculate the center of the rest of the flock, as in the original pseudocode, this function assumes that the center of the entire flock is in the global variable flock_total (set by update_boids once per frame) and simply subtracts this boid's contribution to the average.
 
 	If the mouse is down, ignore the flock and use the mouse location as the attract point.
 
@@ -99,21 +99,25 @@ def towards_attract_point(boid, scale):
 
 	TODO:
 		Effects may change the attract point.
-		Force flock_center to be within the screen boundaries.
+		Force flock_total to be within the screen boundaries.
 		Boids should slow down before reaching their destination and avoid overshooting.
 	"""
+	screen_size = settings.get('size')
+	cx = screen_size[0]/2
+	cy = screen_size[1]/2
 
 	"""Select the attract point."""
 	if pygame.mouse.get_pressed()[0]:
 		ax, ay = pygame.mouse.get_pos()
 
-	elif flock_center:
-		ax = flock_center[0] - flock_px[boid]/flock_size
-		ay = flock_center[1] - flock_py[boid]/flock_size
+	elif flock_size > 1:
+		"""Subtract this boid from the flock, then average the positions of the other boids to find the center of the rest of the flock."""
+		ax = (flock_total[0] - flock_px[boid]) / (flock_size - 1)
+		ay = (flock_total[1] - flock_py[boid]) / (flock_size - 1)
 
-	else:  # screen center
-		screen_size = settings.get('size')
-		ax, ay = screen_size[0]/2, screen_size[1]/2
+	else:
+		"""No flock? Either we're the last boid alive, or there's a bug somewhere. Either way, just return 0,0."""
+		return 0,0
 
 	"""Select a behavior based on this boid's mood/color."""
 	color = settings.get_color(flock[boid].color)
@@ -133,7 +137,7 @@ def towards_attract_point(boid, scale):
 	m = scale #* speed(x,y)
 	return x*m, y*m
 
-add_solo_rule(towards_attract_point, scale=0.005, limit=False)
+add_solo_rule(towards_attract_point, scale=0.005, limit=True)
 
 def avoid_collision(boid, other):
 	"""Rule 2: Boids try to keep a min distance away from other boids."""
@@ -250,11 +254,10 @@ def update_boids():
 	flock_size = len(flock)
 	if flock_size == 0: return
 
-	"""Calculate the center of the entire flock."""
-	global flock_center
-	flock_center = [(flock_px[b],flock_py[b]) for b in xrange(flock_size)]
-	flock_center = sum_points(flock_center)
-	flock_center = flock_center[0]/flock_size, flock_center[1]/flock_size
+	"""Sum the positions of the entire flock."""
+	global flock_total
+	flock_total = [(flock_px[b],flock_py[b]) for b in xrange(flock_size)]
+	flock_total = sum_points(flock_total)
 
 	for boid in xrange(flock_size):
 
