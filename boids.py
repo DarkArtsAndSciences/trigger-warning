@@ -88,26 +88,52 @@ def random_rule(boid, scale):
 
 add_solo_rule(random_rule, scale=0.25, limit=True)
 
-def towards_center(boid, other):
-	"""Rule 1: Boids fly towards the flock's center.
+def towards_attract_point(boid, scale):
+	"""Rule 1: Boids fly towards a point, usually the flock's center.
 
-	TODO: Try replacing this and stay_on_screen with a single solo rule attracting boids to the center of the screen (or to the game's current Attract Point...that could replace mouse_attract too).
-	This might be a major speed increase. Flock rules are slow.
+	Instead of having each boid recalculate the center of the rest of the flock, as in the original pseudocode, this function assumes that the center of the entire flock is in the global variable flock_center (set by update_boids once per frame) and simply subtracts this boid's contribution to the average.
+
+	If the mouse is down, ignore the flock and use the mouse location as the attract point.
+
+	If this boid is angry (blue), ignore the attract point. If this boid is very angry (red), fly AWAY from the attract point.
+
+	TODO:
+		Effects may change the attract point.
+		Force flock_center to be within the screen boundaries.
+		Boids should slow down before reaching their destination and avoid overshooting.
 	"""
 
+	"""Select the attract point."""
+	if pygame.mouse.get_pressed()[0]:
+		ax, ay = pygame.mouse.get_pos()
+
+	elif flock_center:
+		ax = flock_center[0] - flock_px[boid]/flock_size
+		ay = flock_center[1] - flock_py[boid]/flock_size
+
+	else:  # screen center
+		screen_size = settings.get('size')
+		ax, ay = screen_size[0]/2, screen_size[1]/2
+
+	"""Select a behavior based on this boid's mood/color."""
 	color = settings.get_color(flock[boid].color)
-	normal = settings.get_color('white')
-	angry = settings.get_color('red')
+	angry = settings.get_color('blue')
+	angrier = settings.get_color('red')
 
-	if color == normal:
-		return flock_px[other], flock_py[other]
+	if color == angry:  # ignore the attract point
+		ax, ay = 0,0
 
-	if color == angry:  # move away instead
-		return -flock_px[other], -flock_py[other]
+	if color == angrier:  # move away instead of towards
+		ax = -ax
+		ay = -ay
 
-	return 0,0  # other mood, ignore this rule
+	"""Calculate and return the movement vector."""
+	x = ax - flock_px[boid]
+	y = ay - flock_py[boid]
+	m = scale #* speed(x,y)
+	return x*m, y*m
 
-add_flock_rule(towards_center, 'towards', 'flock size', 0.0005, limit=True)
+add_solo_rule(towards_attract_point, scale=0.005, limit=False)
 
 def avoid_collision(boid, other):
 	"""Rule 2: Boids try to keep a min distance away from other boids."""
@@ -208,23 +234,9 @@ def stay_on_screen(boid, border=0, speed=1):
 		y = 0
 	return x,y
 
-add_solo_rule(stay_on_screen, border=100, speed=0.1, limit=False)
+add_solo_rule(stay_on_screen, border=25, speed=0.05, limit=True)
 
-def mouse_attract(boid, attractiveness):
-	"""Rule: If the mouse is down, fly towards it. Boids that are far away fly faster than those that are nearby."""
-
-	if pygame.mouse.get_pressed()[0]:
-		mousex, mousey = pygame.mouse.get_pos()
-		x = mousex - flock_px[boid]
-		y = mousey - flock_py[boid]
-		m = attractiveness * speed(x,y)
-		return x*m, y*m
-
-	return 0,0
-
-add_solo_rule(mouse_attract, attractiveness=0.0001, limit=False)
-
-# TODO: add perching / prevent boids going below the screen
+"""TODO: Add rule for perching / prevent boids going below the screen."""
 
 def update_boids():
 	"""Calculate a new velocity and position for each boid in the flock.
@@ -233,35 +245,40 @@ def update_boids():
 
 	With a large flock, most of the CPU time goes to this function. If the game is too slow with many boids, this is the function to optimize. (If the game is still too slow with three boids, it's something else.)
 	"""
+
+	global flock_size
 	flock_size = len(flock)
 	if flock_size == 0: return
 
+	"""Calculate the center of the entire flock."""
+	global flock_center
+	flock_center = [(flock_px[b],flock_py[b]) for b in xrange(flock_size)]
+	flock_center = sum_points(flock_center)
+	flock_center = flock_center[0]/flock_size, flock_center[1]/flock_size
+
 	for boid in xrange(flock_size):
+
+		"""Update this boid's mood with last frame's changes."""
 		flock[boid].update_mood()
 
-		"""Behavior rules"""
-		sv = [(0,0)]*len(solo_rule)
-		fv = [[(0,0)]*len(flock)]*len(flock_rule)
+		"""Apply each solo rule to this boid."""
+		sv = [func(boid,**fargs) for func,fargs,_ in solo_rule]
 
-		for rule, (func, fargs, _,_,_,_) in enumerate(flock_rule):
-			fv[rule] = [func(boid,other,**fargs) for other in xrange(flock_size) if other != boid]
+		"""Apply each flock rule to each boid/other pair and sum the results."""
+		fv = [sum_points([func(boid,other,**fargs) for other in xrange(flock_size) if other!=boid]) for func,fargs,_,_,_,_ in flock_rule]
 
-		for rule, (func, fargs, _) in enumerate(solo_rule):
-			sv[rule] = func(boid, **fargs)
-
+		"""For each flock rule, divide the sum by the number of boids involved.
+		For 'towards' and 'velocity' rule types, subtract this boid's position or velocity, respectively.
+		Multiply each point by its rule's scale.
+		"""
 		for rule, (func, fargs, rule_type, average, scale, _) in enumerate(flock_rule):
-
-			"""Sum the list of points into a single point."""
-			fv[rule] = sum_points(fv[rule])
-			#if not fv[rule] or not fv[rule][0] or not fv[rule][1]: continue
 
 			if average == 'flock size':
 				average = flock_size-1
 			elif average == 'near boids':
 				average = len(flock[boid].get_near_boids())
 			if average == 0: average = 1  # avoid /0 errors
-			if average != 1:
-				fv[rule] = (fv[rule][0]/average, fv[rule][1]/average)
+			fv[rule] = (fv[rule][0]/average, fv[rule][1]/average)
 
 			if rule_type == 'towards':
 				fv[rule] = ((fv[rule][0]-flock_px[boid])*scale, (fv[rule][1]-flock_py[boid])*scale)  # (v-b.p)*scale
@@ -270,25 +287,30 @@ def update_boids():
 			else:
 				fv[rule] = (fv[rule][0]*scale, fv[rule][1]*scale)
 
-		"""Limit the speed of some rules."""
-		lsv = sum_points([sv[i] for i in xrange(len(sv)) if solo_rule[i][2]])  # rules with limit=True
+		"""Sum the points from rules where limit is True. limit is at index 2 for solo rules and 5 for flock rules."""
+		lsv = sum_points([sv[i] for i in xrange(len(sv)) if solo_rule[i][2]])
 		lfv = sum_points([fv[i] for i in xrange(len(fv)) if flock_rule[i][5]])
 		lv = sum_points([lsv, lfv])
 		current_speed = speed(*lv)
 
+		"""Larger boids have a slower top speed."""
 		#max_speed = min_speed + (Boid.max_size - flock[boid].size)
-		#max_speed += flock[boid].collisions/20.0  # anger
 		max_speed = 7 - flock[boid].size
+
+		"""Angrier boids have a faster top speed."""
+		#max_speed += flock[boid].collisions/20.0  # anger
+
+		"""If this boid is going too fast, slow it down."""
 		if current_speed > max_speed:
 			m = current_speed * max_speed
 			lv = (lv[0]/m, lv[1]/m)
 
-		"""Combine with the unlimited rules."""
+		"""Combine with the points from the rest of the rules."""
 		usv = sum_points([sv[i] for i in xrange(len(sv)) if not solo_rule[i][2]])  # rules with limit=True
 		ufv = sum_points([fv[i] for i in xrange(len(fv)) if not flock_rule[i][5]])
 		v = sum_points([lv, usv, ufv])
 
-		"""Moving boids have a minimum speed."""
+		"""TODO: Moving boids have a minimum speed."""
 		#current_speed = speed(*v)
 		#if current_speed > 0:
 		#	#min_speed = int(flock[boid].size * 1.5)
@@ -375,10 +397,10 @@ class Boid:
 	def vx(self): return flock_vx[self.id]
 	@property
 	def vy(self): return flock_vy[self.id]
-	@vx.setter
-	def vx(self, value): flock_vx[self.id] = value
-	@vy.setter
-	def vy(self, value): flock_vy[self.id] = value
+	#@vx.setter
+	#def vx(self, value): flock_vx[self.id] = value
+	#@vy.setter
+	#def vy(self, value): flock_vy[self.id] = value
 
 	@property
 	def rect(self):
