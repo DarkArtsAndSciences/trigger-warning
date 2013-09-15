@@ -222,6 +222,10 @@ The current state's draw routine is called once per frame.
 def draw_state_menu():
 	draw_text(window, settings.get('title'), cx(), cy()/3, 'title font', 'center', 'baseline')
 
+	text = 'Press SPACE to ignore the warning.'
+	draw_text(window, text, cx(), by()*2/3, 'intro font', 'center', 'baseline')
+
+
 last_frame_letter = 0
 intro_text = """A Trigger has a Warning and an Effect.||
 The Effect occurs ten seconds after the Warning.||
