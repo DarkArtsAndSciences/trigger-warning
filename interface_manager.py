@@ -147,6 +147,12 @@ def get_text_y(height, y, align, ascent=None):
 Drawing utilities
 """
 
+visible_triggers = [(cx()/2,cy(), 25, 'trigger color')]
+
+def draw_triggers(surface):
+	for x,y,r,c in visible_triggers:
+		pygame.draw.circle(surface, settings.get_color(c), (x, y), r)
+
 def draw_crosshairs(surface, x, y, color='white', size=1, width=1):
 	pygame.draw.line(surface, settings.get_color(color), [x-size, y], [x+size, y], width)
 	pygame.draw.line(surface, settings.get_color(color), [x, y-size], [x, y+size], width)
@@ -298,6 +304,7 @@ def draw_state_game():
 			draw_text(surface, text, cx(), cy()*2/3, 'warning text font', 'center', 'bottom')
 			window.blit(surface, (0, 0))
 
+	draw_triggers(window)
 	boids.draw_boids(window)
 	draw_clock()
 
