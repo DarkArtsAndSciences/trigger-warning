@@ -52,6 +52,9 @@ def init():
 	pygame.display.set_caption(settings.get('title'))
 	resize(settings.get('size'))
 
+	"""Initialize triggers."""
+	visible_triggers = [(cx()/2,cy(), 25, 'trigger color')]
+
 """
 Main game loop, called once per frame
 """
@@ -146,8 +149,6 @@ def get_text_y(height, y, align, ascent=None):
 """
 Drawing utilities
 """
-
-visible_triggers = [(cx()/2,cy(), 25, 'trigger color')]
 
 def draw_triggers(surface):
 	for x,y,r,c in visible_triggers:
